@@ -120,12 +120,16 @@ const seedCourse = async () => {
             assignmentId: coding1._id
         });
 
-        course.modules.push({
-            _id: module1Id,
-            title: "Python Essentials Bootcamp",
-            weekNumber: 1,
+        course.weeks.push({
+            title: "Week 1: Foundations",
             order: 1,
-            lessons: lessons
+            description: "Introduction to Python internals and basics.",
+            modules: [{
+                _id: module1Id,
+                title: "Python Essentials Bootcamp",
+                order: 1,
+                lessons: lessons
+            }]
         });
 
         await course.save();

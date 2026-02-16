@@ -12,11 +12,12 @@ mongoose.connect(process.env.MONGODB_URI)
 const seedPythonCourse = async () => {
     try {
         // 1. Find or Create Instructor
-        let instructor = await User.findOne({ email: 'instructor@skillbridge.com' });
+        const instructorEmail = 'instructor@demo.com';
+        let instructor = await User.findOne({ email: instructorEmail });
         if (!instructor) {
             instructor = await User.create({
                 name: 'Demo Instructor',
-                email: 'instructor@demo.com',
+                email: instructorEmail,
                 password: 'password123',
                 role: 'instructor'
             });

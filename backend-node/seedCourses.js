@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 const Course = require('./models/Course');
 const User = require('./models/User');
 
-dotenv.config({ path: './backend/.env' });
+dotenv.config();
 
 const courses = [
     {
