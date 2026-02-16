@@ -1,42 +1,35 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
+// Initialize Resend with API Key
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+/**
+ * Send email using Resend API
+ * @param {Object} options - { email, subject, html }
+ */
 const sendEmail = async (options) => {
   try {
-    console.log(`[Email Service] Attempting to send email to: ${options.email}`);
+    console.log(`[Email Service] Attempting to send email via Resend to: ${options.email}`);
 
-    // ✅ Render-safe Gmail transporter
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,            // IMPORTANT: use 587 on Render
-      secure: false,        // must be false for 587
-      requireTLS: true,     // force TLS upgrade
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Gmail App Password
-      },
-      connectionTimeout: 60000,
-      greetingTimeout: 30000,
-      socketTimeout: 60000,
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
+    // Note: If you haven't verified a domain on Resend, 
+    // you must use 'onboarding@resend.dev' as the from address.
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+    const fromName = process.env.FROM_NAME || "SkillBridge AI";
 
-    // ✅ Verify SMTP connection
-    await transporter.verify();
-    console.log("[Email Service] SMTP connection established successfully");
-
-    const message = {
-      from: `"${process.env.FROM_NAME || "SkillBridge AI"}" <${process.env.EMAIL_USER}>`,
+    const { data, error } = await resend.emails.send({
+      from: `"${fromName}" <${fromEmail}>`,
       to: options.email,
       subject: options.subject,
       html: options.html,
-    };
+    });
 
-    const info = await transporter.sendMail(message);
+    if (error) {
+      console.error(`[Email Service] ❌ Resend API Error:`, error);
+      throw new Error(error.message);
+    }
 
-    console.log(`[Email Service] ✅ Email sent! Message ID: ${info.messageId}`);
-    return info;
+    console.log(`[Email Service] ✅ Email sent! Resource ID: ${data.id}`);
+    return data;
 
   } catch (error) {
     console.error(`[Email Service] ❌ Failed to send email to ${options.email}:`, error.message);
