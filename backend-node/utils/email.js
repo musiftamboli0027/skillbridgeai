@@ -1,7 +1,16 @@
 const { Resend } = require("resend");
 
-// Initialize Resend with API Key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend with API Key lazily to prevent startup crashes if key is missing
+let resend;
+try {
+  if (process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  } else {
+    console.warn("[Email Service] ⚠️ RESEND_API_KEY is missing. Email features will fail.");
+  }
+} catch (error) {
+  console.error("[Email Service] ❌ Failed to initialize Resend client:", error.message);
+}
 
 /**
  * Send email using Resend API
@@ -9,10 +18,17 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  */
 const sendEmail = async (options) => {
   try {
+    if (!resend) {
+      // Re-try initialization if it failed or wasn't configured
+      if (process.env.RESEND_API_KEY) {
+        resend = new Resend(process.env.RESEND_API_KEY);
+      } else {
+        throw new Error("RESEND_API_KEY is missing. Please add it to your environment variables.");
+      }
+    }
+
     console.log(`[Email Service] Attempting to send email via Resend to: ${options.email}`);
 
-    // Note: If you haven't verified a domain on Resend, 
-    // you must use 'onboarding@resend.dev' as the from address.
     const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
     const fromName = process.env.FROM_NAME || "SkillBridge AI";
 
@@ -33,8 +49,7 @@ const sendEmail = async (options) => {
 
   } catch (error) {
     console.error(`[Email Service] ❌ Failed to send email to ${options.email}:`, error.message);
-    console.error(`[Email Service] Full Error Stack:`, error.stack);
-    throw new Error("Email sending failed. Please check backend logs for details.");
+    throw new Error(`Email sending failed: ${error.message}`);
   }
 };
 
