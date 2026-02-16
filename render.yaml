@@ -17,7 +17,7 @@ services:
       - key: JWT_REFRESH_SECRET
         sync: false
       - key: FRONTEND_URL
-        value: https://skillbridge-web.onrender.com
+        value: https://skillbridgeai-1.onrender.com
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET

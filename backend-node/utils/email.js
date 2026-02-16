@@ -18,6 +18,15 @@ const sendEmail = async (options) => {
       socketTimeout: 10000
     });
 
+    // Verify SMTP connection configuration
+    try {
+      await transporter.verify();
+      console.log('[Email Service] SMTP connection established successfully');
+    } catch (verifyError) {
+      console.error('[Email Service] SMTP Verification Failed:', verifyError.message);
+      throw verifyError;
+    }
+
     const message = {
       from: `"${process.env.FROM_NAME || 'SkillBridge AI'}" <${process.env.EMAIL_USER}>`,
       to: options.email,
