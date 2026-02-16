@@ -1,29 +1,45 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
+  try {
+    console.log(`[Email Service] Attempting to send email to: ${options.email}`);
+
     const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: process.env.EMAIL_PORT,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-        },
+      host: "smtp.gmail.com",
+      port: 465, // Secure port for Gmail
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS, // Expected to be a Gmail App Password
+      },
+      // Reduce timeout issues on Render's free tier
+      connectionTimeout: 10000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000
     });
 
     const message = {
-        from: `${process.env.FROM_NAME || 'SkillBridge AI'} <${process.env.FROM_EMAIL || 'noreply@skillbridge.ai'}>`,
-        to: options.email,
-        subject: options.subject,
-        html: options.html,
+      from: `"${process.env.FROM_NAME || 'SkillBridge AI'}" <${process.env.EMAIL_USER}>`,
+      to: options.email,
+      subject: options.subject,
+      html: options.html,
     };
 
     const info = await transporter.sendMail(message);
 
-    console.log('Message sent: %s', info.messageId);
+    console.log(`[Email Service] ✅ Success! Message ID: ${info.messageId}`);
+    return info;
+  } catch (error) {
+    console.error(`[Email Service] ❌ Failed to send email to ${options.email}:`, error.message);
+    console.error(`[Email Service] Full Error Stack:`, error.stack);
+
+    // Throw error so it can be handled by the controller (e.g. authController)
+    throw new Error('Email sending failed. Please check backend logs for details.');
+  }
 };
 
 const getVerificationEmailTemplate = (name, url) => {
-    return `
+  return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
       <h2 style="color: #f47c20;">Welcome to SkillBridge AI!</h2>
       <p>Hello ${name},</p>
@@ -38,7 +54,7 @@ const getVerificationEmailTemplate = (name, url) => {
 };
 
 const getResetPasswordEmailTemplate = (name, url) => {
-    return `
+  return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
       <h2 style="color: #f47c20;">Password Reset Request</h2>
       <p>Hello ${name},</p>
@@ -52,7 +68,7 @@ const getResetPasswordEmailTemplate = (name, url) => {
 };
 
 module.exports = {
-    sendEmail,
-    getVerificationEmailTemplate,
-    getResetPasswordEmailTemplate,
+  sendEmail,
+  getVerificationEmailTemplate,
+  getResetPasswordEmailTemplate,
 };
