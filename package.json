@@ -1,0 +1,18 @@
+{
+    "name": "skillbridge-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        "frontend",
+        "backend-node"
+    ],
+    "scripts": {
+        "dev": "concurrently \"npm run dev -w skillbridge-frontend\" \"npm run dev -w skillbridge-backend\"",
+        "dev:frontend": "npm run dev -w skillbridge-frontend",
+        "dev:backend": "npm run dev -w skillbridge-backend",
+        "build": "npm run build -w skillbridge-frontend"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    }
+}
