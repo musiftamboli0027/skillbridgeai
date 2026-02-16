@@ -1,34 +1,33 @@
-const nodemailer = require('nodemailer');
+const nodemailer = require("nodemailer");
 
 const sendEmail = async (options) => {
   try {
     console.log(`[Email Service] Attempting to send email to: ${options.email}`);
 
+    // ✅ Render-safe Gmail transporter
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 465, // Secure port for Gmail
-      secure: true,
+      port: 587,            // IMPORTANT: use 587 on Render
+      secure: false,        // must be false for 587
+      requireTLS: true,     // force TLS upgrade
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Expected to be a Gmail App Password
+        pass: process.env.EMAIL_PASS, // Gmail App Password
       },
-      // Reduce timeout issues on Render's free tier
-      connectionTimeout: 10000,
-      greetingTimeout: 5000,
-      socketTimeout: 10000
+      connectionTimeout: 60000,
+      greetingTimeout: 30000,
+      socketTimeout: 60000,
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
-    // Verify SMTP connection configuration
-    try {
-      await transporter.verify();
-      console.log('[Email Service] SMTP connection established successfully');
-    } catch (verifyError) {
-      console.error('[Email Service] SMTP Verification Failed:', verifyError.message);
-      throw verifyError;
-    }
+    // ✅ Verify SMTP connection
+    await transporter.verify();
+    console.log("[Email Service] SMTP connection established successfully");
 
     const message = {
-      from: `"${process.env.FROM_NAME || 'SkillBridge AI'}" <${process.env.EMAIL_USER}>`,
+      from: `"${process.env.FROM_NAME || "SkillBridge AI"}" <${process.env.EMAIL_USER}>`,
       to: options.email,
       subject: options.subject,
       html: options.html,
@@ -36,42 +35,36 @@ const sendEmail = async (options) => {
 
     const info = await transporter.sendMail(message);
 
-    console.log(`[Email Service] ✅ Success! Message ID: ${info.messageId}`);
+    console.log(`[Email Service] ✅ Email sent! Message ID: ${info.messageId}`);
     return info;
+
   } catch (error) {
     console.error(`[Email Service] ❌ Failed to send email to ${options.email}:`, error.message);
     console.error(`[Email Service] Full Error Stack:`, error.stack);
-
-    // Throw error so it can be handled by the controller (e.g. authController)
-    throw new Error('Email sending failed. Please check backend logs for details.');
+    throw new Error("Email sending failed. Please check backend logs for details.");
   }
 };
 
 const getVerificationEmailTemplate = (name, url) => {
   return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-      <h2 style="color: #f47c20;">Welcome to SkillBridge AI!</h2>
+    <div style="font-family: Arial; max-width:600px; margin:auto;">
+      <h2 style="color:#f47c20;">Welcome to SkillBridge AI!</h2>
       <p>Hello ${name},</p>
-      <p>Thank you for registering. Please click the button below to verify your email address and activate your account:</p>
-      <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #f47c20; color: #fff; text-decoration: none; border-radius: 5px; margin-top: 10px;">Verify Email</a>
-      <p style="margin-top: 20px;">If the button doesn't work, you can also copy and paste the following link into your browser:</p>
-      <p><a href="${url}">${url}</a></p>
-      <p>This link will expire in 30 minutes.</p>
-      <p>Best regards,<br>The SkillBridge AI Team</p>
+      <p>Please verify your email:</p>
+      <a href="${url}" style="padding:10px 20px;background:#f47c20;color:#fff;text-decoration:none;border-radius:5px;">Verify Email</a>
+      <p>If button doesn't work:</p>
+      <a href="${url}">${url}</a>
     </div>
   `;
 };
 
 const getResetPasswordEmailTemplate = (name, url) => {
   return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-      <h2 style="color: #f47c20;">Password Reset Request</h2>
+    <div style="font-family: Arial; max-width:600px; margin:auto;">
+      <h2 style="color:#f47c20;">Password Reset</h2>
       <p>Hello ${name},</p>
-      <p>You requested a password reset. Please click the button below to set a new password:</p>
-      <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #f47c20; color: #fff; text-decoration: none; border-radius: 5px; margin-top: 10px;">Reset Password</a>
-      <p style="margin-top: 20px;">If you didn't request this, please ignore this email.</p>
-      <p>The link will expire in 10 minutes.</p>
-      <p>Best regards,<br>The SkillBridge AI Team</p>
+      <p>Click below to reset password:</p>
+      <a href="${url}" style="padding:10px 20px;background:#f47c20;color:#fff;text-decoration:none;border-radius:5px;">Reset Password</a>
     </div>
   `;
 };
