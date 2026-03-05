@@ -7,7 +7,9 @@ exports.getPortfolio = async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
             .select('-password -tokens')
-            .populate('enrolledCourses.course');
+            .populate('enrolledCourses.course')
+            .populate('universityId', 'name')
+            .populate('collegeId', 'name');
 
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
@@ -93,9 +95,10 @@ exports.getDashboardStats = async (req, res) => {
         const stats = {
             enrolledCount,
             completedCount,
-            learningStreak: user.loginStreak || 0,
-            totalXp,
-            rank,
+            learningStreak: user.streakCount || 0,
+            totalXp: user.xp || 0,
+            rank: user.rank || 'Novice',
+            badges: user.badges || [],
             upcomingSessions: []
         };
 
@@ -122,7 +125,9 @@ exports.getStudents = async (req, res) => {
 // @access  Private (Admin only)
 exports.getStudent = async (req, res) => {
     try {
-        const student = await User.findById(req.params.id);
+        const student = await User.findById(req.params.id)
+            .populate('universityId', 'name')
+            .populate('collegeId', 'name');
         if (!student) {
             return res.status(404).json({ success: false, message: 'Student not found' });
         }

@@ -81,7 +81,7 @@ export default function Contact() {
                             Contact Us
                         </div>
                         <h1
-                            className="text-4xl md:text-6xl font-bold text-white mb-6 animate-fade-slide-up"
+                            className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-6 animate-fade-slide-up"
                             style={{ animationDelay: '200ms' }}
                         >
                             Let's Start a <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8b5cf6] to-[#06b6d4]">Conversation</span>

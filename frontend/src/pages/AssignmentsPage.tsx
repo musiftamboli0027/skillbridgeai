@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
 import type { Assignment } from '../types/dashboard';
 
@@ -34,39 +33,45 @@ export default function AssignmentsPage() {
             <div className="space-y-10 pb-20">
 
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div>
-                        <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Assignments</h1>
-                        <p className="text-slate-500 font-bold mt-1">Manage your course projects and submission deadlines</p>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pt-6">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg w-fit">
+                            <FileText className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Project Management</span>
+                        </div>
+                        <div>
+                            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight">Missions <span className="text-gradient">& LABS</span></h1>
+                            <p className="text-[#94A3B8] font-medium mt-2 max-w-xl">Execute complex architectural objectives and validatate your technical proficiency through hands-on labs.</p>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="relative group min-w-[300px]">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] group-focus-within:text-indigo-400 transition-colors" />
                             <Input
-                                placeholder="Search assignments..."
+                                placeholder="Search objective ID or course..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl w-64 shadow-sm"
+                                className="pl-11 h-14 bg-white/5 border-white/5 rounded-2xl text-white placeholder:text-[#64748B] focus:outline-none focus:border-indigo-500/30 transition-all font-medium"
                             />
                         </div>
-                        <Button className="h-12 bg-indigo-600 hover:bg-indigo-500 font-bold rounded-xl gap-2 px-6 shadow-xl shadow-indigo-200 dark:shadow-none">
-                            <Plus className="w-4 h-4" />
-                            New Project
+                        <Button className="h-14 bg-[#0A0E1A] border border-white/10 hover:bg-white/5 text-white font-bold rounded-2xl px-8 gap-3 uppercase tracking-widest text-[11px] shadow-2xl">
+                            <Plus className="w-4 h-4 text-indigo-400 stroke-[3]" />
+                            Initiate Project
                         </Button>
                     </div>
                 </div>
 
                 {/* Status Tabs */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide">
+                <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-style">
                     {['All Assignments', 'Pending', 'Submitted', 'Graded', 'Overdue'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={cn(
-                                "px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all border-2",
+                                "px-8 py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] whitespace-nowrap transition-all border",
                                 activeTab === tab
-                                    ? "bg-slate-900 border-slate-900 text-white dark:bg-white dark:text-slate-900 dark:border-white"
-                                    : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-200"
+                                    ? "bg-indigo-600 border-indigo-500 text-white shadow-[0_10px_25px_rgba(79,70,229,0.3)]"
+                                    : "bg-white/5 border-white/5 text-[#64748B] hover:border-white/10 hover:text-[#94A3B8]"
                             )}
                         >
                             {tab}
@@ -75,7 +80,7 @@ export default function AssignmentsPage() {
                 </div>
 
                 {/* Assignments List */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {filteredAssignments.length > 0 ? (
                         filteredAssignments.map((assignment, idx) => (
                             <motion.div
@@ -83,37 +88,37 @@ export default function AssignmentsPage() {
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: idx * 0.1 }}
-                                className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/5 transition-all group"
+                                className="glass-card p-8 border-white/5 group hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500"
                             >
-                                <div className="flex flex-col lg:flex-row lg:items-center gap-8">
+                                <div className="flex flex-col lg:flex-row lg:items-center gap-10">
 
                                     {/* Info Section */}
-                                    <div className="flex-1 flex gap-6">
+                                    <div className="flex-1 flex gap-8">
                                         <div className={cn(
-                                            "w-16 h-16 rounded-[1.5rem] flex items-center justify-center shrink-0 border-2",
-                                            assignment.priority === 'high' ? "bg-rose-50 border-rose-100 text-rose-600" :
-                                                assignment.priority === 'medium' ? "bg-amber-50 border-amber-100 text-amber-600" :
-                                                    "bg-indigo-50 border-indigo-100 text-indigo-600"
+                                            "w-20 h-20 rounded-3xl flex items-center justify-center shrink-0 border backdrop-blur-xl transition-transform group-hover:scale-105 duration-500",
+                                            assignment.priority === 'high' ? "bg-rose-500/10 border-rose-500/20 text-rose-500" :
+                                                assignment.priority === 'medium' ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                                                    "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
                                         )}>
-                                            <FileText className="w-8 h-8" />
+                                            <FileText className="w-10 h-10" />
                                         </div>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-3">
-                                                <Badge className={cn(
-                                                    "uppercase text-[9px] font-black px-2 py-0.5",
-                                                    assignment.priority === 'high' ? "bg-rose-100 text-rose-600 border-rose-200" :
-                                                        assignment.priority === 'medium' ? "bg-amber-100 text-amber-600 border-amber-200" :
-                                                            "bg-indigo-100 text-indigo-600 border-indigo-200"
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn(
+                                                    "uppercase text-[9px] font-bold px-3 py-1 rounded-md border tracking-widest",
+                                                    assignment.priority === 'high' ? "bg-rose-500/10 text-rose-500 border-rose-500/20" :
+                                                        assignment.priority === 'medium' ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                                                            "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
                                                 )}>
                                                     {assignment.priority} Priority
-                                                </Badge>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{assignment.course}</span>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.2em]">{assignment.course}</span>
                                             </div>
-                                            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-indigo-600 transition-colors">
+                                            <h3 className="text-2xl font-bold text-white leading-tight group-hover:text-indigo-400 transition-colors">
                                                 {assignment.title}
                                             </h3>
-                                            <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
-                                                <div className="flex items-center gap-1.5 text-rose-500">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2 text-[11px] font-bold text-rose-500 uppercase tracking-widest">
                                                     <Clock className="w-4 h-4" />
                                                     <span>Deadline: {new Date(assignment.dueDate).toLocaleDateString()}</span>
                                                 </div>
@@ -122,32 +127,32 @@ export default function AssignmentsPage() {
                                     </div>
 
                                     {/* Status & Actions Section */}
-                                    <div className="flex flex-wrap items-center gap-6 lg:border-l border-slate-100 dark:border-slate-800 lg:pl-10">
-                                        <div className="text-center lg:text-left min-w-[120px]">
-                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Current Status</p>
-                                            <div className="flex items-center gap-2 justify-center lg:justify-start">
+                                    <div className="flex flex-wrap items-center gap-10 lg:border-l border-white/5 lg:pl-10">
+                                        <div className="text-center lg:text-left min-w-[140px]">
+                                            <p className="text-[9px] font-bold uppercase text-[#64748B] tracking-[0.2em] mb-2">Network Status</p>
+                                            <div className="flex items-center gap-3 justify-center lg:justify-start">
                                                 {assignment.status === 'pending' ? (
                                                     <>
                                                         <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                                        <span className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase">Awaiting Submission</span>
+                                                        <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Pending</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                                        <span className="text-sm font-black text-emerald-500 uppercase">Submitted</span>
+                                                        <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+                                                        <span className="text-xs font-bold text-[#10B981] uppercase tracking-widest">Secured</span>
                                                     </>
                                                 )}
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-3">
-                                            <Button variant="outline" className="h-12 px-5 gap-2 rounded-xl border-slate-200 dark:border-slate-800 font-bold bg-white dark:bg-slate-900 group/btn hover:border-indigo-600 hover:text-indigo-600 transition-all">
-                                                <Download className="w-4 h-4" />
-                                                Brief
+                                        <div className="flex items-center gap-4">
+                                            <Button variant="outline" className="h-14 px-6 gap-3 rounded-2xl border-white/5 font-bold bg-white/5 text-[#94A3B8] hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest text-[10px]">
+                                                <Download className="w-4 h-4 text-indigo-400" />
+                                                Specs
                                             </Button>
-                                            <Button className="h-12 px-8 bg-slate-900 dark:bg-white dark:text-slate-900 font-black rounded-xl gap-2 shadow-lg hover:bg-indigo-600 transition-all active:scale-95">
-                                                {assignment.status === 'pending' ? 'Submit Project' : 'View Submission'}
-                                                <ArrowUpRight className="w-4 h-4" />
+                                            <Button className="h-14 px-10 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl gap-3 shadow-[0_10px_30px_rgba(79,70,229,0.3)] transition-all active:scale-95 uppercase tracking-widest text-[10px] group">
+                                                {assignment.status === 'pending' ? 'Initiate Upload' : 'Review Manifest'}
+                                                <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                                             </Button>
                                         </div>
                                     </div>
@@ -155,19 +160,19 @@ export default function AssignmentsPage() {
                             </motion.div>
                         ))
                     ) : (
-                        <div className="bg-white dark:bg-slate-900 rounded-[3rem] border-2 border-dashed border-slate-100 dark:border-slate-800 p-20 flex flex-col items-center justify-center text-center space-y-6">
-                            <div className="w-24 h-24 rounded-[2rem] bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-200 dark:text-slate-700 shadow-sm">
-                                <FileText className="w-12 h-12" />
+                        <div className="glass-card border-dashed p-32 flex flex-col items-center justify-center text-center space-y-8">
+                            <div className="w-28 h-28 rounded-3xl bg-white/5 flex items-center justify-center text-[#64748B] border border-white/10 shadow-2xl">
+                                <FileText className="w-12 h-12 opacity-50" />
                             </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">No assignments yet</h3>
-                                <p className="text-slate-500 font-bold max-w-sm mx-auto mt-2">When you enroll in courses and teachers assign projects, they will appear here.</p>
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-bold text-white uppercase tracking-tight">Zero Objectives</h3>
+                                <p className="text-[#94A3B8] font-medium max-w-sm mx-auto mt-2">No missions currently assigned to your coordination point. Enroll in the master curriculum to generate new objectives.</p>
                             </div>
                             <Button
                                 onClick={() => window.location.hash = '#/courses'}
-                                className="h-14 font-black rounded-2xl px-10 bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-100 dark:shadow-none"
+                                className="btn-admin h-14 px-12 bg-white/5 text-white border-white/10 hover:bg-white/10"
                             >
-                                Browse Courses
+                                Explore Curriculum
                             </Button>
                         </div>
                     )}
@@ -175,15 +180,15 @@ export default function AssignmentsPage() {
 
                 {/* Extra Project Card */}
                 {filteredAssignments.length > 0 && (
-                    <div className="bg-slate-50 dark:bg-slate-900/40 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-slate-800 p-20 flex flex-col items-center justify-center text-center space-y-6">
-                        <div className="w-24 h-24 rounded-[2rem] bg-white dark:bg-slate-800 flex items-center justify-center text-slate-200 dark:text-slate-700 shadow-sm">
-                            <Plus className="w-12 h-12" />
+                    <div className="glass-card border-dashed p-20 flex flex-col items-center justify-center text-center space-y-8">
+                        <div className="w-24 h-24 rounded-2xl bg-white/5 flex items-center justify-center text-[#64748B] border border-white/10">
+                            <Plus className="w-10 h-10 opacity-50" />
                         </div>
-                        <div>
-                            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Need a challenge?</h3>
-                            <p className="text-slate-500 font-bold max-w-sm mx-auto mt-2">Request an extra credit project or a mock assessment from your instructors.</p>
+                        <div className="space-y-2">
+                            <h3 className="text-2xl font-bold text-white uppercase tracking-tight">Expansion Mission?</h3>
+                            <p className="text-[#94A3B8] font-medium max-w-sm mx-auto mt-2">Request an advanced architectural challenge or custom project from your senior coordinator.</p>
                         </div>
-                        <Button variant="outline" className="h-12 font-bold rounded-xl px-10 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">Request Project</Button>
+                        <Button variant="outline" className="h-14 font-bold rounded-2xl px-12 border-white/5 bg-white/5 text-[#94A3B8] hover:bg-white/10 hover:text-white uppercase tracking-widest text-[10px]">Request Objective</Button>
                     </div>
                 )}
 

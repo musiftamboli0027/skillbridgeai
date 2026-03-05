@@ -12,6 +12,10 @@ const passport = require('passport');
 const cookieParser = require('cookie-parser');
 const cloudinary = require('cloudinary').v2;
 const { createClient } = require('redis');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+const compression = require('compression');
 
 // Load passport config
 require('./config/passport');
@@ -58,13 +62,14 @@ connectRedis();
 const app = express();
 
 // Body parser
-app.use(express.json());
+app.use(express.json({ limit: '10kb' })); // Limit body payload
 app.use(cookieParser());
 
-// Initialize passport
-app.use(passport.initialize());
-
-// Enable CORS
+// ──────────────────────────────────────────────────────────
+// CORS MUST be applied BEFORE helmet so preflight OPTIONS
+// requests receive the Access-Control-Allow-Origin header
+// before helmet's cross-origin policies can reject them.
+// ──────────────────────────────────────────────────────────
 const allowedOrigins = [
     'https://skillbridgeai-1.onrender.com', // Production Frontend
     'http://localhost:5173',               // Local Development
@@ -87,6 +92,37 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
+// Explicitly handle preflight for all routes
+app.options('*', cors());
+
+// Security Middlewares (after CORS)
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }
+}));
+app.use(mongoSanitize()); // Prevent NoSQL injection
+app.use(compression()); // Compress responses
+
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // 1000 requests per window (generous for development)
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many requests from this IP, please try again in 15 minutes' }
+});
+app.use('/api/', limiter);
+
+// Disable console.log in production
+if (process.env.NODE_ENV === 'production') {
+    console.log = function () {};
+    console.warn = function () {};
+    console.debug = function () {};
+}
+
+// Initialize passport
+app.use(passport.initialize());
+
 // Dev logging middleware
 if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
@@ -100,6 +136,7 @@ const enrollments = require('./routes/enrollmentRoutes');
 const payments = require('./routes/paymentRoutes');
 const github = require('./routes/githubRoutes');
 const assignments = require('./routes/assignmentRoutes');
+const ai = require('./routes/aiRoutes');
 
 
 // Mount routers
@@ -111,6 +148,16 @@ app.use('/api/payments', payments);
 app.use('/api/github', github);
 app.use('/api/assignments', assignments);
 app.use('/api/progress', require('./routes/progressRoutes'));
+app.use('/api/ai', ai);
+app.use('/api/certificates', require('./routes/certificateRoutes'));
+app.use('/api/saas', require('./routes/saasRoutes'));
+app.use('/api/career', require('./routes/careerRoutes'));
+app.use('/api/communication', require('./routes/communicationRoutes'));
+app.use('/api/hub', require('./routes/hubRoutes'));
+app.use('/api/placement', require('./routes/placementRoutes'));
+app.use('/api/collaboration', require('./routes/collaborationRoutes'));
+app.use('/api/community', require('./routes/communityRoutes'));
+app.use('/api/jobs', require('./routes/jobRoutes'));
 
 
 // Home route
@@ -121,20 +168,15 @@ app.get('/', (req, res) => {
         services: {
             database: mongoose.connection.readyState === 1 ? 'online' : 'offline',
             redis: redisClient.isReady ? 'online' : 'offline',
-            cloudinary: !!process.env.CLOUDINARY_API_KEY ? 'configured' : 'not_configured'
+            cloudinary: !!process.env.CLOUDINARY_API_KEY ? 'configured' : 'not_configured',
+            gemini: !!process.env.GEMINI_API_KEY ? 'configured' : 'missing_key'
         }
     });
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(err.status || 500).json({
-        success: false,
-        message: err.message || 'Server error',
-        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
-});
+const errorHandler = require('./middleware/errorMiddleware');
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

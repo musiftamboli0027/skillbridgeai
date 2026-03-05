@@ -5,8 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Clock, BookOpen, CheckCircle } from 'lucide-react';
-import { api } from '@/services/api'; // Adjust path if needed
+import { Clock, BookOpen, CheckCircle2, Copy, Check } from 'lucide-react';
 
 interface TextLessonViewerProps {
     content: string;
@@ -24,114 +23,272 @@ export const TextLessonViewer: React.FC<TextLessonViewerProps> = ({
     const [scrollProgress, setScrollProgress] = useState(0);
     const [secondsSpent, setSecondsSpent] = useState(0);
     const [isCompleted, setIsCompleted] = useState(false);
+    const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+    const codeBlockCounter = useRef(0);
+    // Reset counter each render so code block indices are stable
+    codeBlockCounter.current = 0;
 
-    const scrollAreaRef = useRef<HTMLDivElement>(null); // Ref to the scrollable container
+    // Reset on lesson change
+    useEffect(() => {
+        setScrollProgress(0);
+        setSecondsSpent(0);
+        setIsCompleted(false);
+    }, [lessonId]);
 
-    // 1. Time Tracking
+    // Time tracking
     useEffect(() => {
         const timer = setInterval(() => {
-            setSecondsSpent(prev => {
-                const newValue = prev + 1;
-                // Sync every 30s
-                if (newValue % 30 === 0) {
-                    api.syncVideoProgress(courseId, lessonId, newValue).catch(console.warn);
-                }
-                return newValue;
-            });
+            setSecondsSpent(prev => prev + 1);
         }, 1000);
         return () => clearInterval(timer);
     }, [lessonId, courseId]);
 
-    // 2. Scroll Tracking
+    // Scroll tracking
     const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
         const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
         const totalScrollable = scrollHeight - clientHeight;
         const currentPercent = totalScrollable > 0 ? (scrollTop / totalScrollable) : 1;
-
-        // Update valid progress (0 to 100)
         const percent = Math.min(100, Math.max(0, currentPercent * 100));
         setScrollProgress(percent);
 
-        // Check completion criteria (e.g., >80% scroll AND > 30s time - time check done in completion handler usually)
         if (percent > 90 && !isCompleted) {
             setIsCompleted(true);
             if (onComplete) onComplete();
         }
     };
 
+    const handleCopy = (code: string, idx: number) => {
+        navigator.clipboard.writeText(code).then(() => {
+            setCopiedIndex(idx);
+            setTimeout(() => setCopiedIndex(null), 2000);
+        });
+    };
+
+    const minutes = Math.floor(secondsSpent / 60);
+    const seconds = secondsSpent % 60;
+
     return (
-        <div className="flex flex-col h-full bg-white relative">
-            {/* Reading Progress Bar (Fixed Top) */}
-            <div className="h-1 w-full bg-slate-100 shrink-0">
+        <div className="flex flex-col w-full h-full bg-[#020203] overflow-hidden">
+            {/* Progress Bar */}
+            <div className="h-0.5 w-full bg-white/5 shrink-0">
                 <div
-                    className="h-full bg-indigo-600 transition-all duration-300 ease-out"
+                    className="h-full bg-indigo-500 shadow-[0_0_8px_#6366f1] transition-all duration-300 ease-out"
                     style={{ width: `${scrollProgress}%` }}
                 />
             </div>
 
             {/* Reading Meta Header */}
-            <div className="flex items-center justify-between px-8 py-4 border-b border-slate-50 shrink-0 bg-white/80 backdrop-blur z-10">
-                <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <div className="flex items-center justify-between px-6 lg:px-10 py-3 border-b border-white/5 shrink-0 bg-slate-950/60 backdrop-blur-xl">
+                <div className="flex items-center gap-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     <span className="flex items-center gap-2">
-                        <BookOpen className="w-4 h-4" /> Reading Mode
+                        <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                        Reading Mode
                     </span>
                     <span className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" /> {Math.floor(secondsSpent / 60)}m {secondsSpent % 60}s
+                        <Clock className="w-3.5 h-3.5 text-slate-600" />
+                        {minutes}m {seconds.toString().padStart(2, '0')}s
                     </span>
+                    <span className="text-slate-700">|</span>
+                    <span className="text-slate-600">{Math.round(scrollProgress)}% read</span>
                 </div>
                 {isCompleted && (
-                    <div className="flex items-center gap-2 text-green-600 text-xs font-bold uppercase tracking-widest animate-in fade-in slide-in-from-right">
-                        <CheckCircle className="w-4 h-4" /> Read
+                    <div className="flex items-center gap-2 text-emerald-400 text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-right duration-500">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Completed
                     </div>
                 )}
             </div>
 
-            {/* Main Content Area */}
+            {/* Scrollable Content Area */}
             <div
-                className="flex-1 overflow-y-auto px-6 sm:px-12 lg:px-24 py-8 custom-scrollbar scroll-smooth"
+                className="flex-1 overflow-y-auto custom-scrollbar"
                 onScroll={handleScroll}
-                ref={scrollAreaRef}
+                style={{ overscrollBehavior: 'contain' }}
             >
-                <article className="prose prose-slate prose-lg max-w-3xl mx-auto pb-32">
+                <div className="max-w-3xl mx-auto px-6 sm:px-10 lg:px-16 py-10 pb-32">
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeRaw]}
                         components={{
+                            // Code blocks
                             code({ node, inline, className, children, ...props }: any) {
                                 const match = /language-(\w+)/.exec(className || '');
+                                const codeString = String(children).replace(/\n$/, '');
+                                // Give each block a stable index
+                                const blockIdx = codeBlockCounter.current++;
                                 return !inline && match ? (
-                                    <div className="not-prose rounded-xl overflow-hidden my-6 shadow-2xl border border-slate-700">
-                                        <div className="bg-[#1e1e1e] px-4 py-2 text-xs font-mono text-slate-400 border-b border-slate-700 flex justify-between">
-                                            <span>{match[1]}</span>
-                                            <span>Copy</span>
+                                    <div className="not-prose rounded-2xl overflow-hidden my-6 shadow-2xl border border-white/5 bg-[#0d0d0e]">
+                                        <div className="flex items-center justify-between bg-slate-900/80 px-5 py-2.5 border-b border-white/5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex gap-1.5">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
+                                                </div>
+                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{match[1]}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleCopy(codeString, blockIdx)}
+                                                className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors px-3 py-1 rounded-lg hover:bg-white/5"
+                                            >
+                                                {copiedIndex === blockIdx
+                                                    ? <><Check className="w-3 h-3 text-emerald-400" /><span className="text-emerald-400">Copied!</span></>
+                                                    : <><Copy className="w-3 h-3" />Copy</>
+                                                }
+                                            </button>
                                         </div>
                                         <SyntaxHighlighter
                                             style={vscDarkPlus}
                                             language={match[1]}
                                             PreTag="div"
-                                            customStyle={{ margin: 0, borderRadius: 0 }}
+                                            customStyle={{
+                                                margin: 0,
+                                                borderRadius: 0,
+                                                background: '#0d0d0e',
+                                                padding: '1.25rem 1.5rem',
+                                                fontSize: '0.825rem',
+                                                lineHeight: '1.7',
+                                            }}
                                             {...props}
                                         >
-                                            {String(children).replace(/\n$/, '')}
+                                            {codeString}
                                         </SyntaxHighlighter>
                                     </div>
                                 ) : (
-                                    <code className={className ? className : "bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded font-mono text-sm before:content-[''] after:content-['']"} {...props}>
+                                    <code
+                                        className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-1.5 py-0.5 rounded-md font-mono text-[0.82em] before:content-[''] after:content-['']"
+                                        {...props}
+                                    >
                                         {children}
                                     </code>
                                 );
                             },
-                            h1: ({ node, ...props }) => <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-8 mt-4" {...props} />,
-                            h2: ({ node, ...props }) => <h2 className="text-2xl font-bold tracking-tight text-slate-800 mt-12 mb-6 border-b border-slate-100 pb-2" {...props} />,
-                            p: ({ node, ...props }) => <p className="text-slate-600 leading-7 mb-6" {...props} />,
-                            blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-indigo-500 pl-6 py-2 my-8 bg-indigo-50/50 rounded-r-lg italic text-slate-700" {...props} />,
-                            ul: ({ node, ...props }) => <ul className="list-disc list-outside ml-6 space-y-2 text-slate-600 mb-6" {...props} />,
-                            img: ({ node, ...props }) => <img className="rounded-xl shadow-lg my-8 w-full" {...props} />,
+
+                            // Headings
+                            h1: ({ node, ...props }) => (
+                                <h1
+                                    className="text-3xl lg:text-4xl font-black tracking-tight text-white mb-8 mt-2 leading-tight"
+                                    {...props}
+                                />
+                            ),
+                            h2: ({ node, ...props }) => (
+                                <h2
+                                    className="text-xl lg:text-2xl font-black tracking-tight text-slate-100 mt-12 mb-5 pb-3 border-b border-white/5 flex items-center gap-3"
+                                    {...props}
+                                />
+                            ),
+                            h3: ({ node, ...props }) => (
+                                <h3
+                                    className="text-base font-black uppercase tracking-widest text-indigo-400 mt-8 mb-4"
+                                    {...props}
+                                />
+                            ),
+
+                            // Paragraphs
+                            p: ({ node, ...props }) => (
+                                <p
+                                    className="text-slate-300 leading-8 mb-5 font-medium text-[15px]"
+                                    {...props}
+                                />
+                            ),
+
+                            // Blockquote
+                            blockquote: ({ node, ...props }) => (
+                                <blockquote
+                                    className="border-l-4 border-indigo-500 pl-6 py-3 my-6 bg-indigo-500/5 rounded-r-2xl italic text-slate-300 font-medium"
+                                    {...props}
+                                />
+                            ),
+
+                            // Lists
+                            ul: ({ node, ...props }) => (
+                                <ul
+                                    className="list-none ml-0 space-y-2.5 text-slate-300 mb-6"
+                                    {...props}
+                                />
+                            ),
+                            li: ({ node, children, ...props }) => (
+                                <li
+                                    className="flex items-start gap-3 font-medium text-[15px] leading-7"
+                                    {...props}
+                                >
+                                    <span className="mt-2 w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                                    <span>{children}</span>
+                                </li>
+                            ),
+                            ol: ({ node, ...props }) => (
+                                <ol
+                                    className="list-decimal list-inside ml-0 space-y-2.5 text-slate-300 mb-6 font-medium text-[15px]"
+                                    {...props}
+                                />
+                            ),
+
+                            // Table
+                            table: ({ node, ...props }) => (
+                                <div className="overflow-x-auto my-8 rounded-2xl border border-white/5">
+                                    <table
+                                        className="w-full border-collapse text-sm"
+                                        {...props}
+                                    />
+                                </div>
+                            ),
+                            thead: ({ node, ...props }) => (
+                                <thead className="bg-slate-900/80" {...props} />
+                            ),
+                            th: ({ node, ...props }) => (
+                                <th
+                                    className="text-left px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-white/5"
+                                    {...props}
+                                />
+                            ),
+                            td: ({ node, ...props }) => (
+                                <td
+                                    className="px-5 py-3 text-slate-300 font-medium border-b border-white/[0.03] text-[13px]"
+                                    {...props}
+                                />
+                            ),
+                            tr: ({ node, ...props }) => (
+                                <tr
+                                    className="hover:bg-white/[0.02] transition-colors"
+                                    {...props}
+                                />
+                            ),
+
+                            // Strong / Em
+                            strong: ({ node, ...props }) => (
+                                <strong className="text-white font-black" {...props} />
+                            ),
+                            em: ({ node, ...props }) => (
+                                <em className="text-indigo-300 not-italic font-bold" {...props} />
+                            ),
+
+                            // Horizontal rule
+                            hr: () => (
+                                <hr className="my-10 border-white/5" />
+                            ),
+
+                            // Links
+                            a: ({ node, ...props }) => (
+                                <a
+                                    className="text-indigo-400 font-bold hover:text-indigo-300 underline underline-offset-2 transition-colors"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    {...props}
+                                />
+                            ),
+
+                            // Images
+                            img: ({ node, ...props }) => (
+                                <img
+                                    className="rounded-2xl shadow-2xl my-8 w-full border border-white/5"
+                                    {...props}
+                                />
+                            ),
                         }}
                     >
                         {content}
                     </ReactMarkdown>
-                </article>
+                </div>
             </div>
         </div>
     );

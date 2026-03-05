@@ -8,14 +8,24 @@ import {
     LogOut,
     ChevronLeft,
     ChevronRight,
-    Command,
+    Bot,
+    Code,
+    Compass,
+    Github,
+    Briefcase,
+    FileText,
+    Users,
+    Trophy,
+    ClipboardList,
+    Mic,
+    Award,
+    TrendingUp,
+    MessageSquare,
+    GraduationCap,
     Globe
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
-import { Button } from '../ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -25,15 +35,42 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
-    { label: 'Visit Main Site', href: '/', icon: Globe },
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'My Courses', href: '/dashboard/courses', icon: BookOpen },
+    { label: 'Visit Main Site', href: '/', icon: Globe, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+    { label: 'My Courses', href: '/dashboard/courses', icon: BookOpen, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+    { label: 'AI Tutor', href: '/dashboard/ai-tutor', icon: Bot, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+    { label: 'Practice Lab', href: '/dashboard/practice', icon: Code, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+    { label: 'Community Feed', href: '/dashboard/community-feed', icon: Users, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+
+    // 2nd Year+
+    { label: 'Career Explorer', href: '/dashboard/career', icon: Compass, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+    { label: 'Skill Tracker', href: '/dashboard/skills', icon: TrendingUp, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+    { label: 'GitHub Sync', href: '/dashboard/github', icon: Github, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+    { label: 'Collaboration', href: '/dashboard/collaboration', icon: Briefcase, years: ['2nd Year', '3rd Year', '4th Year'] },
+    { label: 'Opportunities', href: '/dashboard/opportunities', icon: Briefcase, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
+
+    // 3rd Year+
+    { label: 'Internships', href: '/dashboard/internships', icon: Briefcase, years: ['3rd Year', '4th Year'] },
+    { label: 'Resume Builder', href: '/dashboard/resume', icon: FileText, years: ['3rd Year', '4th Year'] },
+    { label: 'Communication', href: '/dashboard/comm-builder', icon: MessageSquare, years: ['3rd Year', '4th Year'] },
+    { label: 'Hackathons', href: '/dashboard/hackathons', icon: Trophy, years: ['3rd Year', '4th Year'] },
+    { label: 'Community', href: '/dashboard/community', icon: Users, years: ['3rd Year', '4th Year'] },
+
+    // 4th Year Only
+    { label: 'Aptitude Prep', href: '/dashboard/placement', icon: ClipboardList, years: ['4th Year'] },
+    { label: 'AI Interview', href: '/dashboard/placement', icon: Mic, years: ['4th Year'] },
+    { label: 'Placement Cell', href: '/dashboard/placement', icon: Award, years: ['4th Year'] },
+];
+
+const BOTTOM_ITEMS = [
+    { label: 'Profile', href: '/dashboard/profile', icon: User },
+    { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
 export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }: SidebarProps) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -52,187 +89,129 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, set
         navigate('/');
     };
 
-    const sidebarVariants = {
-        expanded: { width: '260px' },
-        collapsed: { width: '80px' }
-    };
+    let roleNav = NAV_ITEMS.filter(item => !item.years || item.years.includes(user?.year || '1st Year'));
+
+    if (user?.role === 'recruiter') {
+        roleNav = [
+            { label: 'Hiring Dashboard', href: '/dashboard/recruiter', icon: Briefcase, years: [] },
+            { label: 'Public Opportunities', href: '/opportunities', icon: Globe, years: [] }
+        ];
+    } else if (user?.role === 'admin' || user?.role === 'super_admin') {
+        roleNav.push({ label: 'Recruiter Hub', href: '/dashboard/recruiter', icon: Briefcase, years: [] });
+    }
+
+    const isRecruiter = user?.role === 'recruiter';
 
     return (
         <>
             {/* Mobile Overlay */}
-            <AnimatePresence>
-                {isMobile && isMobileOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 transition-opacity"
-                        onClick={() => setIsMobileOpen(false)}
-                    />
-                )}
-            </AnimatePresence>
+            {isMobile && isMobileOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                    onClick={() => setIsMobileOpen(false)}
+                />
+            )}
 
-            <motion.aside
-                initial={false}
-                animate={isMobile ? (isMobileOpen ? { x: 0 } : { x: '-100%' }) : (isCollapsed ? 'collapsed' : 'expanded')}
-                variants={sidebarVariants}
+            <aside
                 className={cn(
-                    "fixed top-0 left-0 h-screen bg-skillbridge-sidebar border-r border-teal-900 transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl",
-                    isMobile && "w-64"
+                    "fixed top-0 left-0 h-screen bg-[#0A0E1A] border-r border-white/5 transition-all duration-300 z-50 flex flex-col",
+                    isMobile
+                        ? cn("w-64", isMobileOpen ? "translate-x-0" : "-translate-x-full")
+                        : isCollapsed ? "w-20" : "w-64"
                 )}
             >
-                {/* Brand / Logo */}
-                <div className="h-20 flex items-center px-6 border-b border-teal-900/50 shrink-0">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-10 h-10 rounded-xl bg-skillbridge-button flex items-center justify-center text-skillbridge-sidebar shrink-0 shadow-lg shadow-skillbridge-button/20">
-                            <Command className="w-6 h-6" />
-                        </div>
-                        <AnimatePresence mode="wait">
-                            {!isCollapsed && (
-                                <motion.span
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -10 }}
-                                    className="font-black text-xl text-white tracking-tighter whitespace-nowrap uppercase"
-                                >
-                                    Skill<span className="text-skillbridge-button">Bridge</span>
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
+                {/* Logo */}
+                <div className="h-16 flex items-center px-4 border-b border-white/5 shrink-0">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${isRecruiter ? 'from-[#7C3AED] to-[#4F46E5]' : 'from-[#10B981] to-[#00D4FF]'} flex items-center justify-center shrink-0`}>
+                        {isRecruiter ? <Briefcase size={20} className="text-white" /> : <GraduationCap size={20} className="text-white" />}
                     </div>
+                    {!isCollapsed && (
+                        <div className="ml-3 overflow-hidden">
+                            <span className="font-bold text-white text-lg">{isRecruiter ? 'Recruiter' : 'Student'}</span>
+                            <span className="text-xs text-[#94A3B8] block -mt-1">{isRecruiter ? 'SkillBridge Hiring' : 'SkillBridge'}</span>
+                        </div>
+                    )}
                 </div>
 
-                {/* Navigation Items */}
-                <div className="flex-1 overflow-y-auto py-8 px-4 space-y-2 scrollbar-hide">
-                    <TooltipProvider delayDuration={0}>
-                        {NAV_ITEMS.map((item) => {
-                            const isActive = location.pathname === item.href;
-                            return (
-                                <div key={item.href}>
-                                    {isCollapsed ? (
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <NavLink
-                                                    to={item.href}
-                                                    className={cn(
-                                                        "flex items-center justify-center w-full h-12 rounded-xl transition-all duration-200 group relative",
-                                                        isActive
-                                                            ? "bg-skillbridge-button text-skillbridge-sidebar shadow-lg shadow-skillbridge-button/20"
-                                                            : "text-teal-100 hover:bg-white/10 hover:text-skillbridge-button"
-                                                    )}
-                                                >
-                                                    <item.icon className="w-5 h-5 shrink-0" />
-                                                </NavLink>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right" className="font-semibold px-3 py-1.5 bg-skillbridge-button text-skillbridge-sidebar">
-                                                {item.label}
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    ) : (
-                                        <NavLink
-                                            to={item.href}
-                                            onClick={() => isMobile && setIsMobileOpen(false)}
-                                            className={cn(
-                                                "flex items-center gap-3 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200 group relative overflow-hidden",
-                                                isActive
-                                                    ? "bg-skillbridge-button text-skillbridge-sidebar shadow-lg shadow-skillbridge-button/20"
-                                                    : "text-teal-100/70 hover:bg-white/5 hover:text-skillbridge-button"
-                                            )}
-                                        >
-                                            <item.icon className={cn("w-5 h-5 transition-transform", !isActive && "group-hover:scale-110")} />
-                                            <span className="truncate">{item.label}</span>
-                                            {isActive && (
-                                                <motion.div
-                                                    layoutId="active-pill"
-                                                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-skillbridge-sidebar rounded-r-full"
-                                                />
-                                            )}
-                                        </NavLink>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </TooltipProvider>
+                {/* Toggle Button */}
+                {!isMobile && (
+                    <button
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-[#111827] border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
+                    >
+                        {isCollapsed ? <ChevronRight size={14} className="text-white" /> : <ChevronLeft size={14} className="text-white" />}
+                    </button>
+                )}
+
+                {/* Navigation */}
+                <nav className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-hide">
+                    {roleNav.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = location.pathname === item.href;
+                        return (
+                            <NavLink
+                                key={item.href + item.label}
+                                to={item.href}
+                                onClick={() => isMobile && setIsMobileOpen(false)}
+                                className={cn(
+                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all",
+                                    isActive
+                                        ? (isRecruiter ? "bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20" : "bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20")
+                                        : "text-[#94A3B8] hover:bg-white/5 hover:text-white",
+                                    isCollapsed && "justify-center px-0"
+                                )}
+                                title={isCollapsed ? item.label : undefined}
+                            >
+                                <Icon size={20} className="shrink-0" />
+                                {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
+                            </NavLink>
+                        );
+                    })}
 
                     {/* Divider */}
-                    <div className="py-4 px-2">
-                        <div className="h-px bg-teal-900/50" />
+                    <div className="py-3">
+                        <div className="h-px bg-white/5" />
                     </div>
 
-                    {/* Meta Items */}
-                    <TooltipProvider delayDuration={0}>
-                        {[
-                            { label: 'Profile', href: '/dashboard/profile', icon: User },
-                            { label: 'Settings', href: '/dashboard/settings', icon: Settings },
-                        ].map((item) => {
-                            const isActive = location.pathname === item.href;
-                            return (
-                                <div key={item.href}>
-                                    {isCollapsed ? (
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <NavLink
-                                                    to={item.href}
-                                                    className={cn(
-                                                        "flex items-center justify-center w-full h-12 rounded-xl transition-all duration-200 group relative",
-                                                        isActive
-                                                            ? "bg-skillbridge-button text-skillbridge-sidebar shadow-lg"
-                                                            : "text-teal-100 hover:bg-white/10 hover:text-skillbridge-button"
-                                                    )}
-                                                >
-                                                    <item.icon className="w-5 h-5 shrink-0" />
-                                                </NavLink>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right" className="font-semibold bg-skillbridge-button text-skillbridge-sidebar">
-                                                {item.label}
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    ) : (
-                                        <NavLink
-                                            to={item.href}
-                                            onClick={() => isMobile && setIsMobileOpen(false)}
-                                            className={cn(
-                                                "flex items-center gap-3 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200 group relative overflow-hidden",
-                                                isActive
-                                                    ? "bg-skillbridge-button text-skillbridge-sidebar shadow-lg"
-                                                    : "text-teal-100/70 hover:bg-white/5 hover:text-skillbridge-button"
-                                            )}
-                                        >
-                                            <item.icon className="w-5 h-5" />
-                                            <span className="truncate">{item.label}</span>
-                                        </NavLink>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </TooltipProvider>
-                </div>
+                    {/* Profile & Settings */}
+                    {BOTTOM_ITEMS.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = location.pathname === item.href;
+                        return (
+                            <NavLink
+                                key={item.href}
+                                to={item.href}
+                                onClick={() => isMobile && setIsMobileOpen(false)}
+                                className={cn(
+                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all",
+                                    isActive
+                                        ? (isRecruiter ? "bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20" : "bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20")
+                                        : "text-[#94A3B8] hover:bg-white/5 hover:text-white",
+                                    isCollapsed && "justify-center px-0"
+                                )}
+                                title={isCollapsed ? item.label : undefined}
+                            >
+                                <Icon size={20} className="shrink-0" />
+                                {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
+                            </NavLink>
+                        );
+                    })}
+                </nav>
 
-                {/* Footer Actions */}
-                <div className="p-4 border-t border-teal-900/50">
+                {/* Footer: Logout */}
+                <div className="p-3 border-t border-white/5">
                     <button
                         onClick={handleLogout}
                         className={cn(
-                            "flex items-center gap-3 w-full px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest text-rose-300 hover:bg-rose-950/30 transition-all group",
+                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[#EF4444] hover:bg-[#EF4444]/10 transition-all",
                             isCollapsed && "justify-center px-0"
                         )}
                     >
-                        <LogOut className="w-5 h-5 shrink-0 group-hover:-translate-x-1 transition-transform" />
-                        {!isCollapsed && <span>Logout</span>}
+                        <LogOut size={20} className="shrink-0" />
+                        {!isCollapsed && <span className="text-sm font-medium">Sign Out</span>}
                     </button>
-
-                    <div className="mt-4 hidden lg:block">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="w-full text-teal-200 hover:bg-white/5"
-                        >
-                            {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-                        </Button>
-                    </div>
                 </div>
-            </motion.aside>
+            </aside>
         </>
     );
 }

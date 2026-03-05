@@ -6,23 +6,22 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// @desc    Get Assignment is now via Get Course Lesson
-// @route   POST /api/assignments/:lessonId/submit/quiz
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/assignments/:lessonId/submit/quiz
+// ─────────────────────────────────────────────────────────────────────────────
 exports.submitQuiz = async (req, res) => {
     try {
         const { lessonId } = req.params;
-        const { answers, courseId, moduleId } = req.body; // answers: { [questionIndex]: selectedOptionIndex }
+        const { answers, courseId, moduleId } = req.body;
 
-        // Find the lesson in the course
         const course = await Course.findById(courseId);
         if (!course) return res.status(404).json({ message: 'Course not found' });
 
-        const { lesson, module } = findLesson(course, lessonId);
+        const { lesson } = findLesson(course, lessonId);
         if (!lesson || lesson.type !== 'quiz') {
             return res.status(404).json({ message: 'Quiz not found' });
         }
 
-        // Calculate Score
         let correctCount = 0;
         const results = lesson.quizQuestions.map((q, idx) => {
             const isCorrect = answers[idx] === q.correctAnswer;
@@ -31,10 +30,9 @@ exports.submitQuiz = async (req, res) => {
         });
 
         const score = Math.round((correctCount / lesson.quizQuestions.length) * 100);
-        const passed = score >= 70; // 70% threshold
+        const passed = score >= 70;
 
-        // Save Submission
-        const submission = await Submission.create({
+        await Submission.create({
             user: req.user.id,
             course: courseId,
             module: moduleId,
@@ -45,63 +43,89 @@ exports.submitQuiz = async (req, res) => {
             status: passed ? 'passed' : 'failed'
         });
 
-        // If passed, mark lesson complete
         let unlockResult = null;
         if (passed) {
             unlockResult = await progressService.markLessonComplete(req.user.id, courseId, lessonId, moduleId);
         }
 
         res.json({ success: true, score, passed, results, unlockResult });
-
     } catch (err) {
-        console.error(err);
+        console.error('[Quiz Submit]', err);
         res.status(500).json({ success: false, message: err.message });
     }
 };
 
-// @desc    Submit Coding
-// @route   POST /api/assignments/:lessonId/submit/coding
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/assignments/:lessonId/submit/coding
+// ─────────────────────────────────────────────────────────────────────────────
 exports.submitCoding = async (req, res) => {
     try {
         const { lessonId } = req.params;
         const { code, language, courseId, moduleId } = req.body;
 
+        if (!code || !courseId) {
+            return res.status(400).json({ success: false, message: 'code and courseId are required' });
+        }
+
         const course = await Course.findById(courseId);
+        if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+
         const { lesson } = findLesson(course, lessonId);
 
-        if (!lesson || lesson.type !== 'coding') {
-            return res.status(404).json({ message: 'Coding challenge not found' });
+        // ── If no coding challenge / test cases defined → auto-accept (run-only mode) ──
+        if (!lesson || lesson.type !== 'coding' || !lesson.codingChallenge?.testCases?.length) {
+            // Just save submission + mark complete (no test harness)
+            await Submission.create({
+                user: req.user.id,
+                course: courseId,
+                module: moduleId,
+                lesson: lessonId,
+                assignmentType: 'coding',
+                code,
+                language,
+                testResults: [],
+                score: 100,
+                status: 'passed'
+            });
+
+            const unlockResult = await progressService.markLessonComplete(
+                req.user.id, courseId, lessonId, moduleId
+            );
+
+            return res.json({
+                success: true,
+                score: 100,
+                passed: true,
+                results: [],
+                noTestCases: true,
+                unlockResult
+            });
         }
 
         const challenge = lesson.codingChallenge;
-        const testCases = challenge.testCases || [];
+        const testCases = challenge.testCases;
+        const functionName = challenge.functionName || null; // e.g. "add", "greet"
 
         const results = [];
         let passedCount = 0;
 
-        // Run Code against Test Cases
         for (const tc of testCases) {
             try {
-                // Prepare Python script wrapper to capture output properly if needed
-                // For "HelloWorld", specific input might not be needed, but for "Temperature", it is.
-                // Simple run:
-                const output = await runCode(code, language, tc.input);
-
-                // Normalization (trim whitespace and handle line endings)
+                const output = await runCode(code, language, tc.input, functionName);
                 const actual = output.trim().replace(/\r\n/g, '\n');
-                const expected = tc.output.toString().trim().replace(/\r\n/g, '\n');
+                const expected = String(tc.output).trim().replace(/\r\n/g, '\n');
 
-                // Advanced Matching: if expected is just a number, we can try numeric match
                 const isNumeric = !isNaN(parseFloat(expected)) && isFinite(expected);
-                const passed = (actual === expected) || (isNumeric && parseFloat(actual) === parseFloat(expected));
+                const testPassed = (actual === expected) ||
+                    (isNumeric && parseFloat(actual) === parseFloat(expected));
 
-                if (passed) passedCount++;
+                if (testPassed) passedCount++;
 
                 results.push({
                     input: tc.isHidden ? 'Hidden' : tc.input,
                     expected: tc.isHidden ? 'Hidden' : expected,
                     actual: tc.isHidden ? 'Hidden' : actual,
-                    passed
+                    passed: testPassed
                 });
             } catch (err) {
                 results.push({
@@ -112,10 +136,13 @@ exports.submitCoding = async (req, res) => {
             }
         }
 
-        const score = testCases.length > 0 ? Math.round((passedCount / testCases.length) * 100) : 100;
-        const passed = score === 100; // Strict 100% for coding? Or 80? Let's say 100 for now.
+        const score = testCases.length > 0
+            ? Math.round((passedCount / testCases.length) * 100)
+            : 100;
 
-        // Save Submission
+        // Pass threshold: 80% of test cases (was strict 100% before — too harsh)
+        const passed = score >= 80;
+
         await Submission.create({
             user: req.user.id,
             course: courseId,
@@ -131,58 +158,69 @@ exports.submitCoding = async (req, res) => {
 
         let unlockResult = null;
         if (passed) {
-            unlockResult = await progressService.markLessonComplete(req.user.id, courseId, lessonId, moduleId);
+            unlockResult = await progressService.markLessonComplete(
+                req.user.id, courseId, lessonId, moduleId
+            );
         }
 
         res.json({ success: true, score, passed, results, unlockResult });
 
     } catch (err) {
-        console.error(err);
+        console.error('[Coding Submit]', err);
         res.status(500).json({ success: false, message: err.message });
     }
 };
 
-async function runCode(code, language, input) {
+// ─────────────────────────────────────────────────────────────────────────────
+// runCode — execute student code, optionally calling a named function
+// ─────────────────────────────────────────────────────────────────────────────
+async function runCode(code, language, input, functionName) {
     return new Promise((resolve, reject) => {
-        const isPython = language === 'python';
-        const tempId = Date.now() + Math.floor(Math.random() * 1000);
-        const filename = `temp_${tempId}${isPython ? '.py' : '.js'}`;
+        const isPython = language === 'python' || language === 'py';
+        const ext = isPython ? '.py' : '.js';
+        const tempId = `${Date.now()}_${Math.floor(Math.random() * 9999)}`;
         const tempDir = path.join(__dirname, '../temp');
-        const filepath = path.join(tempDir, filename);
+        const filepath = path.join(tempDir, `code_${tempId}${ext}`);
 
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
         let wrappedCode = code;
-        if (input) {
-            if (!isPython) {
-                const functionName = 'sum';
-                // If they haven't explicitly logged the function call, we append it.
-                if (!code.includes(`console.log(${functionName}`)) {
-                    wrappedCode += `\n\n// Auto-generated test call\nconst _res_ = typeof ${functionName} !== 'undefined' ? ${functionName}(${input}) : undefined;\nif (_res_ !== undefined) console.log(_res_);`;
+
+        // Only inject a test-call if a specific function name is declared in the challenge
+        if (input !== undefined && input !== null && input !== '' && functionName) {
+            if (isPython) {
+                // Check if student already calls print(functionName(...))
+                if (!code.includes(`print(${functionName}`)) {
+                    wrappedCode += `\n\n# Auto test call\ntry:\n    _r_ = ${functionName}(${input})\n    if _r_ is not None: print(_r_)\nexcept Exception as e: print(f"ERROR: {e}")`;
                 }
             } else {
-                const functionName = 'sum';
-                if (!code.includes(`print(${functionName}`)) {
-                    wrappedCode += `\n\n# Auto-generated test call\ntry:\n    _res_ = ${functionName}(${input})\n    if _res_ is not None: print(_res_)\nexcept NameError: pass`;
+                if (!code.includes(`console.log(${functionName}`)) {
+                    wrappedCode += `\n\n// Auto test call\ntry {\n  const _r_ = typeof ${functionName} !== 'undefined' ? ${functionName}(${input}) : undefined;\n  if (_r_ !== undefined) console.log(_r_);\n} catch(e) { console.log('ERROR:', e.message); }`;
                 }
             }
         }
 
-        fs.writeFileSync(filepath, wrappedCode);
+        fs.writeFileSync(filepath, wrappedCode, 'utf-8');
 
-        const command = isPython ? `python "${filepath}"` : `node "${filepath}"`;
+        // Use python3 on Linux/Mac, python on Windows
+        const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
+        const command = isPython ? `${pyCmd} "${filepath}"` : `node "${filepath}"`;
 
-        const child = exec(command, { timeout: 4000 }, (error, stdout, stderr) => {
-            // Cleanup
-            try { if (fs.existsSync(filepath)) fs.unlinkSync(filepath); } catch (e) { }
+        exec(command, { timeout: 6000 }, (error, stdout, stderr) => {
+            try { if (fs.existsSync(filepath)) fs.unlinkSync(filepath); } catch (_) {}
 
-            if (error && error.killed) return reject(new Error('Time Limit Exceeded (4s)'));
-            if (stderr && !stderr.includes('DeprecationWarning')) return reject(new Error(stderr));
+            if (error?.killed) return reject(new Error('⏱ Time Limit Exceeded (6s)'));
+            if (stderr && !stderr.includes('DeprecationWarning') && !stderr.includes('ExperimentalWarning')) {
+                return reject(new Error(stderr.slice(0, 300)));
+            }
             resolve(stdout);
         });
     });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// findLesson — search all weeks → modules → lessons
+// ─────────────────────────────────────────────────────────────────────────────
 function findLesson(course, lessonId) {
     for (const week of (course.weeks || [])) {
         for (const mod of (week.modules || [])) {

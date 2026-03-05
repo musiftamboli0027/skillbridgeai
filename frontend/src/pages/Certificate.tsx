@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Loader2, Share2, Award, CheckCircle2, Trophy, ArrowLeft, Printer } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function Certificate() {
     const { id } = useParams();
@@ -138,6 +139,17 @@ export default function Certificate() {
                                 <CheckCircle2 size={32} />
                             </div>
                             <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Verified Alumnus</p>
+                        </div>
+                        <div className="space-y-4 flex flex-col items-center">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Digital Verification</p>
+                            <div className="p-3 bg-white border-2 border-slate-50 rounded-2xl shadow-sm">
+                                <QRCodeSVG
+                                    value={`${window.location.origin}/verify/${data._id}`}
+                                    size={80}
+                                    level="H"
+                                    includeMargin={false}
+                                />
+                            </div>
                         </div>
                         <div className="space-y-1">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Certificate ID</p>

@@ -31,6 +31,8 @@ exports.markLessonComplete = async (userId, courseId, lessonId, moduleId) => {
     const enrollment = await Enrollment.findOne({ user: userId, course: courseId });
     if (!enrollment) throw new Error('Enrollment not found');
 
+    let xpRewardValue = 0;
+
     // Idempotency check
     const alreadyCompleted = enrollment.completedLessons.find(c => c.lessonId.toString() === lessonId);
     if (!alreadyCompleted) {
@@ -53,10 +55,40 @@ exports.markLessonComplete = async (userId, courseId, lessonId, moduleId) => {
             if (totalLessons > 0) {
                 enrollment.overallProgress = Math.round((enrollment.completedLessons.length / totalLessons) * 100);
             }
+
+            // Sync to User document
+            const user = await User.findById(userId);
+            if (user) {
+                // Reward XP based on lesson type
+                const lesson = course.weeks.flatMap(w => w.modules).flatMap(m => m.lessons).find(l => l._id.toString() === lessonId);
+                let xpReward = 10; // Default
+                if (lesson) {
+                    if (lesson.type === 'coding') xpReward = 100;
+                    else if (lesson.type === 'quiz') xpReward = 50;
+                    else if (lesson.type === 'project') xpReward = 500;
+                    else if (lesson.type === 'visualizer') xpReward = 30;
+                }
+
+                user.xp += xpReward;
+                xpRewardValue = xpReward;
+
+                // Update Rank logic
+                if (user.xp > 10000) user.rank = 'Legend';
+                else if (user.xp > 5000) user.rank = 'Master';
+                else if (user.xp > 2000) user.rank = 'Expert';
+                else if (user.xp > 1000) user.rank = 'Specialist';
+                else if (user.xp > 500) user.rank = 'Apprentice';
+
+                // Check for badges
+                if (enrollment.overallProgress === 100 && !user.badges.some(b => b.name === `Master of ${course.title}`)) {
+                    user.badges.push({ name: `Master of ${course.title}`, icon: '🏆' });
+                }
+
+                await user.save();
+            }
         }
         await enrollment.save();
 
-        // Sync to User document
         await User.updateOne(
             { _id: userId, "enrolledCourses.course": courseId },
             { $set: { "enrolledCourses.$.progress": enrollment.overallProgress } }
@@ -64,27 +96,10 @@ exports.markLessonComplete = async (userId, courseId, lessonId, moduleId) => {
     }
 
     // Check for Module Completion/Unlock
-    return await exports.checkModuleUnlock(enrollment, courseId, moduleId);
+    const unlockResult = await exports.checkModuleUnlock(enrollment, courseId, moduleId);
+    return { ...unlockResult, xpReward: xpRewardValue };
 };
 
-exports.updateVideoProgress = async (userId, courseId, lessonId, secondsWatched) => {
-    const enrollment = await Enrollment.findOne({ user: userId, course: courseId });
-    if (!enrollment) return;
-
-    if (!enrollment.videoWatchTime) {
-        enrollment.videoWatchTime = new Map();
-    }
-
-    const lessonKey = lessonId.toString();
-    const current = enrollment.videoWatchTime.get(lessonKey) || 0;
-
-    if (secondsWatched > current) {
-        enrollment.videoWatchTime.set(lessonKey, secondsWatched);
-        enrollment.lastAccessed = Date.now();
-        enrollment.currentLesson = lessonId;
-        await enrollment.save();
-    }
-};
 
 exports.checkModuleUnlock = async (enrollment, courseId, currentModuleId) => {
     const course = await Course.findById(courseId);

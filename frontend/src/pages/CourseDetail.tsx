@@ -9,7 +9,6 @@ import {
   Clock,
   BarChart3,
   CheckCircle,
-  Play,
   ChevronDown,
   ChevronUp,
   ArrowLeft,
@@ -18,8 +17,12 @@ import {
   ShoppingCart,
   Loader2,
   ShieldCheck,
-  Zap
+  Zap,
+  Terminal,
+  FlaskConical,
+  Sparkles
 } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -175,7 +178,9 @@ export default function CourseDetail() {
     }
   };
 
-  const totalLessons = (course.modules || []).reduce((acc: number, m: any) => acc + (m.lessons || []).length, 0);
+  const totalLessons = course.weeks
+    ? course.weeks.reduce((acc: number, w: any) => acc + (w.modules || []).reduce((mAcc: number, m: any) => mAcc + (m.lessons || []).length, 0), 0)
+    : (course.modules || []).reduce((acc: number, m: any) => acc + (m.lessons || []).length, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
@@ -288,55 +293,72 @@ export default function CourseDetail() {
               </div>
 
               <div className="space-y-3">
-                {(course.modules || []).map((module: any, index: number) => (
-                  <div key={module.id || module._id || `module-${index}`} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[24px] overflow-hidden transition-all shadow-sm">
-                    <button
-                      onClick={() => toggleModule(module.id || module._id)}
-                      className="w-full flex items-center justify-between p-6 text-left group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center font-black text-slate-400 dark:text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-black text-slate-900 dark:text-white leading-tight">{module.title}</p>
-                          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">{(module.lessons || []).length} Strategic Lessons</p>
-                        </div>
-                      </div>
-                      <div className="w-8 h-8 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center dark:text-white">
-                        {expandedModules.includes(module.id || module._id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </div>
-                    </button>
-
-                    <AnimatePresence>
-                      {expandedModules.includes(module.id || module._id) && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="px-6 pb-6"
-                        >
-                          <div className="pt-2 space-y-2">
-                            {(module.lessons || []).map((lesson: any, lIndex: number) => (
-                              <div key={lIndex} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all group/lesson">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center flex-shrink-0 group-hover/lesson:scale-110 transition-transform">
-                                  {lesson.type === 'video' ? <Play className="w-5 h-5 text-indigo-600" /> : <BookOpen className="w-5 h-5 text-indigo-600" />}
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-bold text-slate-900 dark:text-white">{lesson.title}</p>
-                                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{lesson.duration} • {lesson.type}</p>
-                                </div>
-                                {lesson.isPreview && (
-                                  <span className="px-3 py-1 bg-green-500 text-white text-[10px] font-black rounded-full uppercase tracking-tighter">Preview</span>
-                                )}
-                              </div>
-                            ))}
+                {(course.weeks
+                  ? course.weeks.flatMap((w: any) => w.modules || [])
+                  : (course.modules || [])).map((module: any, index: number) => (
+                    <div key={module.id || module._id || `module-${index}`} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[24px] overflow-hidden transition-all shadow-sm">
+                      <button
+                        onClick={() => toggleModule(module.id || module._id)}
+                        className="w-full flex items-center justify-between p-6 text-left group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center font-black text-slate-400 dark:text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                            {index + 1}
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                ))}
+                          <div>
+                            <p className="font-black text-slate-900 dark:text-white leading-tight">{module.title}</p>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">{(module.lessons || []).length} Strategic Lessons</p>
+                          </div>
+                        </div>
+                        <div className="w-8 h-8 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center dark:text-white">
+                          {expandedModules.includes(module.id || module._id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </button>
+
+                      <AnimatePresence>
+                        {expandedModules.includes(module.id || module._id) && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="px-6 pb-6"
+                          >
+                            <div className="pt-2 space-y-2">
+                              {(module.lessons || []).map((lesson: any, lIndex: number) => (
+                                <div key={lIndex} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all group/lesson">
+                                  <div className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 group-hover/lesson:scale-110 transition-transform",
+                                    lesson.type === 'visualizer' ? "bg-amber-500/10" :
+                                      lesson.type === 'coding' ? "bg-indigo-500/10" :
+                                        lesson.type === 'quiz' ? "bg-rose-500/10" :
+                                          "bg-slate-100 dark:bg-white/5"
+                                  )}>
+                                    {lesson.type === 'visualizer' ? <Zap className="w-5 h-5 text-amber-500 fill-amber-500/20" /> :
+                                      lesson.type === 'coding' ? <Terminal className="w-5 h-5 text-indigo-500" /> :
+                                        lesson.type === 'quiz' ? <FlaskConical className="w-5 h-5 text-rose-500" /> :
+                                          lesson.type === 'playground' ? <Sparkles className="w-5 h-5 text-purple-500" /> :
+                                            <BookOpen className="w-5 h-5 text-indigo-600" />}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-bold text-slate-900 dark:text-white">{lesson.title}</p>
+                                      {(lesson.type === 'visualizer' || lesson.type === 'playground') && (
+                                        <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-500 text-[8px] font-black rounded uppercase tracking-tighter">Logic Demo</span>
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{lesson.duration} • {lesson.type}</p>
+                                  </div>
+                                  {lesson.isPreview && (
+                                    <span className="px-3 py-1 bg-green-500 text-white text-[10px] font-black rounded-full uppercase tracking-tighter">Preview</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
@@ -400,6 +422,43 @@ export default function CourseDetail() {
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Pricing Tiers Section */}
+                  <div className="mt-10 pt-10 border-t border-slate-100 dark:border-white/5 space-y-6">
+                    <h4 className="text-sm font-black uppercase tracking-widest dark:text-white mb-4">Select Your Learning Tier</h4>
+                    <div className="grid gap-3">
+                      {[
+                        { title: 'Self-Paced', price: course.price, features: ['Full Curriculum', 'AI Tutor Access', 'Certification'] },
+                        { title: 'Pro', price: (course.price || 0) + 5000, features: ['Everything in Self-Paced', 'Live Doubt Sessions', 'Mock Interviews'], popular: true },
+                        { title: 'Premium', price: (course.price || 0) + 15000, features: ['Everything in Pro', '1-on-1 Mentorship', 'Job Referral Program'] },
+                      ].map((tier, i) => (
+                        <button
+                          key={i}
+                          className={cn(
+                            "w-full p-5 rounded-2xl border text-left transition-all relative group",
+                            tier.popular
+                              ? "border-indigo-500 bg-indigo-500/5 shadow-[0_0_20px_rgba(99,102,241,0.1)]"
+                              : "border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/50 hover:border-indigo-500/50"
+                          )}
+                        >
+                          {tier.popular && (
+                            <span className="absolute -top-2 right-4 px-2 py-0.5 bg-indigo-600 text-[8px] font-black text-white uppercase tracking-widest rounded-full">Most Popular</span>
+                          )}
+                          <div className="flex justify-between items-start mb-2">
+                            <p className="text-sm font-bold dark:text-white">{tier.title}</p>
+                            <p className="text-lg font-black dark:text-white">₹{tier.price?.toLocaleString()}</p>
+                          </div>
+                          <ul className="space-y-1">
+                            {tier.features.map((f, fi) => (
+                              <li key={fi} className="text-[10px] text-slate-500 flex items-center gap-1.5 font-medium">
+                                <CheckCircle className="w-3 h-3 text-indigo-500" /> {f}
+                              </li>
+                            ))}
+                          </ul>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="mt-8 pt-8 border-t border-slate-100 dark:border-white/5">

@@ -9,10 +9,33 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'student' | 'admin';
+  role: 'student' | 'admin' | 'university_admin' | 'super_admin' | 'recruiter' | 'instructor';
   avatar?: string;
   githubId?: string;
   enrolledCourses: (string | any)[];
+  universityId?: any;
+  collegeId?: any;
+  year?: string;
+  branch?: string;
+  careerInterest?: string;
+  onboardingComplete?: boolean;
+  primaryDomain?: string;
+  secondarySkills?: string[];
+  domainLevel?: string;
+  recruiterProfile?: {
+    companyName: string;
+    companyWebsite: string;
+    companyLogo: string;
+    companyDescription: string;
+    verificationStatus: 'Pending' | 'Approved' | 'Rejected';
+    isVerified: boolean;
+  };
+  collaborationScore?: number;
+  leadershipScore?: number;
+  technicalScore?: number;
+  totalXp?: number;
+  learningStreak?: number;
+  rank?: string;
 }
 
 interface AuthContextType {
@@ -20,9 +43,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User | null>;
-  register: (name: string, email: string, password: string, role?: string) => Promise<boolean>;
+  register: (userData: any) => Promise<boolean>;
   githubLogin: (token: string, user: User) => void;
   logout: () => void;
+  setAuth: (token: string, user: User) => void;
   updateProfile: (data: Partial<User>) => void;
   enrollInCourse: (courseId: string) => void;
 }
@@ -32,6 +56,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('skillbridge_token');
+    localStorage.removeItem('skillbridge_user');
+    // If we're not already on login, redirect
+    if (!window.location.hash.includes('/login')) {
+      window.location.href = '/#/login';
+    }
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -91,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initAuth();
-  }, []);
+  }, [logout]);
 
   const login = useCallback(async (email: string, password: string): Promise<User | null> => {
     try {
@@ -122,9 +156,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string, role?: string): Promise<boolean> => {
+  const register = useCallback(async (userData: any): Promise<boolean> => {
     try {
-      const data = await api.register({ name, email, password, role });
+      const data = await api.register(userData);
       // Registrations usually return the user and token directly in many implementations
       // If it only returns the user, we might need to log in after
       if (data) {
@@ -150,14 +184,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('skillbridge_user', JSON.stringify(userData));
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem('skillbridge_token');
-    localStorage.removeItem('skillbridge_user');
-    // If we're not already on login, redirect
-    if (!window.location.hash.includes('/login')) {
-      window.location.href = '/#/login';
-    }
+  const setAuth = useCallback((token: string, userData: User) => {
+    setUser(userData);
+    localStorage.setItem('skillbridge_token', token);
+    localStorage.setItem('skillbridge_user', JSON.stringify(userData));
   }, []);
 
   const updateProfile = useCallback((data: Partial<User>) => {
@@ -194,6 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         githubLogin,
         logout,
+        setAuth,
         updateProfile,
         enrollInCourse,
       }}

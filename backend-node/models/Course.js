@@ -14,12 +14,11 @@ const lessonSchema = new mongoose.Schema({
   duration: String, // e.g., "10:05"
   type: {
     type: String,
-    enum: ['video', 'reading', 'quiz', 'coding', 'project', 'visualizer', 'playground'],
-    default: 'video'
+    enum: ['reading', 'quiz', 'coding', 'project', 'visualizer', 'playground'],
+    default: 'reading'
   },
 
   // Content Fields
-  videoUrl: String, // For 'video'
   content: String, // For 'reading'
 
   // Assignment Config (for quiz/coding/project types)
@@ -34,12 +33,30 @@ const lessonSchema = new mongoose.Schema({
     starterCode: String,
     language: { type: String, default: 'javascript' },
     solution: String,
+    functionName: String,  // e.g. "add", "greet" — which function to call in test harness
     testCases: [testCaseSchema]
   },
+
   projectConfig: {
     repoRequirements: [String],
     minCommits: Number
   },
+
+  // Advanced EdTech Fields
+  threeJsBlock: {
+    conceptName: String,
+    visualDescription: String,
+    pythonConcept: String,
+    interactionType: String,
+    uiIntegrationHint: String
+  },
+  debuggingBlock: {
+    wrongCode: String,
+    correctedCode: String,
+    explanation: String
+  },
+  expectedSkills: [String],
+  miniChallenge: String,
 
   isPreview: { type: Boolean, default: false },
   order: { type: Number, required: true }
@@ -100,7 +117,6 @@ const courseSchema = new mongoose.Schema({
     type: String,
     default: 'no-photo.jpg'
   },
-  promoVideo: String,
 
   // Pricing
   price: { type: Number, required: true },
@@ -126,8 +142,26 @@ const courseSchema = new mongoose.Schema({
 
   slug: String,
   isPublished: { type: Boolean, default: false },
+  isFeatured: { type: Boolean, default: false },
+  approvalStatus: {
+    type: String,
+    enum: ['draft', 'pending', 'approved', 'rejected'],
+    default: 'draft'
+  },
+  rejectionReason: String,
 
   features: [String], // "Certificate", "Native Teacher"
+
+  assessmentModel: {
+    codingWeightage: { type: String, default: "60%" },
+    mcqWeightage: { type: String, default: "40%" }
+  },
+
+  aiTutorSystem: {
+    logicMirroringExamples: [String],
+    indentationAlertBehavior: String,
+    syntaxHintRules: [String]
+  },
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
@@ -136,7 +170,12 @@ const courseSchema = new mongoose.Schema({
 // Middleware to create slug from title
 courseSchema.pre('save', function (next) {
   if (this.title) {
-    this.slug = this.title.toLowerCase().split(' ').join('-');
+    this.slug = this.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .split(/\s+/)
+      .join('-');
   }
   next();
 });

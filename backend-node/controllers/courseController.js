@@ -348,3 +348,50 @@ exports.addReview = async (req, res) => {
     });
   }
 };
+
+// @desc    Approve a course
+// @route   PATCH /api/courses/:id/approve
+// @access  Private (Super Admin)
+exports.approveCourse = async (req, res) => {
+  try {
+    const course = await Course.findByIdAndUpdate(req.params.id, {
+      approvalStatus: 'approved',
+      isPublished: true
+    }, { new: true });
+
+    res.json({ success: true, course });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Approval failed' });
+  }
+};
+
+// @desc    Reject a course
+// @route   PATCH /api/courses/:id/reject
+// @access  Private (Super Admin)
+exports.rejectCourse = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const course = await Course.findByIdAndUpdate(req.params.id, {
+      approvalStatus: 'rejected',
+      isPublished: false,
+      rejectionReason: reason
+    }, { new: true });
+
+    res.json({ success: true, course });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Rejection failed' });
+  }
+};
+
+// @desc    Get pending courses
+// @route   GET /api/courses/admin/pending
+// @access  Private (Super Admin)
+exports.getPendingCourses = async (req, res) => {
+  try {
+    const courses = await Course.find({ approvalStatus: 'pending' }).populate('instructor', 'name email');
+    res.json({ success: true, courses });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch' });
+  }
+};
+

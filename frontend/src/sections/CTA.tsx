@@ -30,7 +30,7 @@ export default function CTA() {
       className="relative py-20 md:py-28 overflow-hidden"
       style={{
         background: '#0f172a',
-        clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 100%)',
+        clipPath: 'polygon(0 0, 100% 0, 100% 92%, 0 100%)',
       }}
     >
       {/* Pattern Overlay */}
@@ -43,11 +43,11 @@ export default function CTA() {
 
       {/* Gradient Orbs */}
       <div
-        className="absolute top-0 left-1/4 w-96 h-96 bg-[#8b5cf6]/20 rounded-full blur-3xl"
+        className="absolute top-0 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#8b5cf6]/20 rounded-full blur-3xl"
         style={{ animation: 'morphFloat 15s ease-in-out infinite alternate' }}
       />
       <div
-        className="absolute bottom-0 right-1/4 w-80 h-80 bg-white/10 rounded-full blur-3xl"
+        className="absolute bottom-0 right-1/4 w-40 sm:w-80 h-40 sm:h-80 bg-white/10 rounded-full blur-3xl"
         style={{ animation: 'morphFloat 12s ease-in-out infinite alternate-reverse' }}
       />
 

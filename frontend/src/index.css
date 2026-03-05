@@ -20,11 +20,20 @@
 
   --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-expo-in-out: cubic-bezier(0.87, 0, 0.13, 1);
+
+  /* Admin/Premium Theme Tokens */
+  --admin-bg: #03040A;
+  --admin-card: rgba(17, 24, 39, 0.7);
+  --admin-border: rgba(255, 255, 255, 0.06);
+  --admin-accent: #00D4FF;
+  --admin-secondary: #7C3AED;
+  --admin-success: #10B981;
 }
 
 @layer base {
   html {
     @apply scroll-smooth;
+    overflow-x: hidden;
   }
 
   body {
@@ -32,12 +41,27 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Prevent images/media from breaking layouts */
+  img, video, iframe, svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Better mobile touch targets */
+  @media (max-width: 768px) {
+    button, a, input, select, textarea {
+      min-height: 44px;
+    }
   }
 }
 
 @layer components {
   .container-custom {
-    @apply max-w-7xl mx-auto px-6 md:px-12 lg:px-16;
+    @apply max-w-7xl mx-auto px-4 sm:px-6 md:px-12 lg:px-16;
   }
 
   .btn-premium {
@@ -58,7 +82,7 @@
   }
 
   .section-title {
-    @apply text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter text-black mb-6;
+    @apply text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter text-black mb-6;
   }
 
   .section-subtitle {
@@ -74,7 +98,32 @@
   }
 
   .glass-card {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+    background: var(--admin-card);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--admin-border);
+    border-radius: 16px;
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-card-sm {
+    background: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+  }
+
+  .btn-admin {
+    @apply flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all duration-300;
+    background: var(--admin-accent);
+    color: var(--admin-bg);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 13px;
+  }
+
+  .btn-admin:hover {
+    @apply -translate-y-0.5 shadow-lg;
+    box-shadow: 0 8px 24px rgba(0, 212, 255, 0.3);
   }
 
   /* Custom styles for HTML content from API */

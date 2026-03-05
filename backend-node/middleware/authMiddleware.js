@@ -45,4 +45,15 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+const requireVerifiedRecruiter = (req, res, next) => {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin') return next();
+  if (req.user.role !== 'recruiter') {
+    return res.status(403).json({ success: false, message: 'Access denied. You must be a recruiter.' });
+  }
+  if (req.user.recruiterProfile?.verificationStatus !== 'Approved') {
+    return res.status(403).json({ success: false, message: 'Your recruiter account must be approved by an Admin to post or manage jobs.' });
+  }
+  next();
+};
+
+module.exports = { protect, authorize, requireVerifiedRecruiter };

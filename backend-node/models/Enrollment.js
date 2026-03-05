@@ -37,8 +37,10 @@ const enrollmentSchema = new mongoose.Schema({
   // Detailed Progress Tracking
   completedLessons: [{
     lessonId: mongoose.Schema.Types.ObjectId,
+    moduleId: mongoose.Schema.Types.ObjectId,    // ← added: which module this lesson belongs to
     completedAt: { type: Date, default: Date.now }
   }],
+
 
   completedModules: [{
     moduleId: mongoose.Schema.Types.ObjectId,
@@ -66,12 +68,6 @@ const enrollmentSchema = new mongoose.Schema({
   },
   currentModule: mongoose.Schema.Types.ObjectId,
   currentWeek: mongoose.Schema.Types.ObjectId,
-
-  // Activity Tracking
-  videoWatchTime: {
-    type: Map,
-    of: Number // lessonId -> secondsWatched
-  },
 
   lastAccessed: { type: Date, default: Date.now },
   startDate: { type: Date, default: Date.now },

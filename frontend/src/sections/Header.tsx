@@ -10,8 +10,7 @@ const NAV_LINKS = [
   { name: 'Courses', href: '/courses' },
   { name: 'About', href: '/about' },
   { name: 'Life', href: '/life' },
-  { name: 'Career', href: '/careers' },
-  { name: 'Blogs', href: '/blogs' },
+  { name: 'Community', href: '/community' },
   { name: 'Contact', href: '/contact' },
 ];
 
@@ -25,7 +24,7 @@ export default function Header() {
   const isHomePage = location.pathname === '/';
   const isSolid = isScrolled || !isHomePage;
 
-  const dashboardUrl = user?.role === 'admin' ? '/admin' : '/dashboard';
+  const dashboardUrl = (user?.role === 'admin' || user?.role === 'university_admin' || user?.role === 'super_admin') ? '/admin' : '/dashboard';
 
   // --- Optimized Scroll Listener ---
   useEffect(() => {

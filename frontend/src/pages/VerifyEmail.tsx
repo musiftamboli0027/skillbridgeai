@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { CheckCircle2, XCircle, Loader2, ArrowRight } from 'lucide-react';
 
 export default function VerifyEmail() {
     const [searchParams] = useSearchParams();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [message, setMessage] = useState('Verifying your email address...');
+    const { setAuth } = useAuth();
 
     const token = searchParams.get('token');
     const email = searchParams.get('email');
@@ -27,8 +29,7 @@ export default function VerifyEmail() {
 
                     // Store token and user if returned (direct login)
                     if (response.token && response.user) {
-                        localStorage.setItem('skillbridge_token', response.token);
-                        localStorage.setItem('skillbridge_user', JSON.stringify(response.user));
+                        setAuth(response.token, response.user);
                     }
                 } else {
                     setStatus('error');

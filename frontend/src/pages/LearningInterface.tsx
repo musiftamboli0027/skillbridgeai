@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import ReactPlayer from 'react-player';
 import {
     Play,
     ChevronLeft,
@@ -16,6 +15,7 @@ import {
     Info,
     CheckCircle2,
     FlaskConical,
+    Bot,
     RotateCcw
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -29,10 +29,13 @@ import { TextLessonViewer } from '../components/TextLessonViewer';
 import CodePlayground from './LogicDemo/components/CodePlayground';
 import CodeEditor from './LogicPractice/CodeEditor';
 import LogicVisualizer3D from './LogicPractice/LogicVisualizer3D';
+import ConceptVisualizer3D from './LogicPractice/ConceptVisualizer3D';
+import { ScopeVisualizer } from '../components/visualizer/ScopeVisualizer';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../components/ui/resizable';
+import { AITutorChat, AITutorTrigger } from '../components/AITutorChat';
+import GitHubSaveButton from '../components/github/GitHubSaveButton';
 
-// Fix for generic ReactPlayer type issues
-const PlayerComponent = ReactPlayer as any;
+
 
 const LearningInterface: React.FC = () => {
     const { id } = useParams<{ id: string }>(); // Course ID
@@ -52,12 +55,12 @@ const LearningInterface: React.FC = () => {
     const [isRunning, setIsRunning] = useState(false);
     const [codingResult, setCodingResult] = useState<any>(null);
     const [quizAnswers, setQuizAnswers] = useState<{ [key: number]: number }>({});
-    const [videoProgress, setVideoProgress] = useState(0);
-    const playerRef = useRef<any>(null);
 
     // Sidebar state
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isCompleting, setIsCompleting] = useState(false);
+    const [aiFeedback, setAiFeedback] = useState<any>(null);
+    const [isChatOpen, setIsChatOpen] = useState(false);
     const [visualizerState, setVisualizerState] = useState<'idle' | 'if' | 'else' | 'loop'>('idle');
     const [visualizerCode, setVisualizerCode] = useState<string>(`// Visualizing Decision Logic
 if (status === 'success') {
@@ -78,7 +81,6 @@ if (status === 'success') {
             if (currentLesson.type === 'quiz') {
                 setQuizAnswers({});
             }
-            setVideoProgress(0);
         }
     }, [currentLesson]);
 
@@ -122,9 +124,13 @@ if (status === 'success') {
         };
 
         const loadFirstLesson = (c: any) => {
-            if (c.weeks?.[0]?.modules?.[0]?.lessons?.[0]) {
-                setCurrentModule(c.weeks[0].modules[0]);
-                setCurrentLesson(c.weeks[0].modules[0].lessons[0]);
+            const firstWeek = c.weeks?.[0];
+            const firstModule = firstWeek ? firstWeek.modules?.[0] : c.modules?.[0];
+            const firstLesson = firstModule?.lessons?.[0];
+
+            if (firstLesson && firstModule) {
+                setCurrentModule(firstModule);
+                setCurrentLesson(firstLesson);
             }
         };
 
@@ -146,7 +152,14 @@ if (status === 'success') {
                         navigate(`/certificate/${id}`);
                     }, 1500);
                 } else {
-                    toast.success('Mission Accomplished!');
+                    if (res.xpReward > 0) {
+                        toast.success(`Mission Accomplished! +${res.xpReward} XP`, {
+                            icon: '✨',
+                            description: 'You are gaining momentum. Keep going!'
+                        });
+                    } else {
+                        toast.success('Mission Accomplished!');
+                    }
                     handleNextLesson();
                 }
             }
@@ -180,7 +193,6 @@ if (status === 'success') {
         if (nextL && nextM) {
             setCurrentLesson(nextL);
             setCurrentModule(nextM);
-            setVideoProgress(0);
         } else {
             if (progress?.certificateIssued) {
                 navigate(`/certificate/${id}`);
@@ -202,6 +214,7 @@ if (status === 'success') {
     const handleCodeSubmit = async () => {
         if (!currentLesson?.codingChallenge) return;
         setIsRunning(true);
+        setAiFeedback(null);
         try {
             const res = await api.submitCodingAssignment(currentLesson._id, {
                 code,
@@ -210,18 +223,41 @@ if (status === 'success') {
                 moduleId: currentModule._id
             });
             setCodingResult(res);
-            if (res.passed) {
-                toast.success('All Test Cases Passed!');
-                handleLessonComplete();
+
+            if (res.passed || res.noTestCases) {
+                // Backend already called markLessonComplete — just refresh UI
+                const score = res.score ?? 100;
+                toast.success(
+                    res.noTestCases
+                        ? '✅ Code submitted! Lesson marked complete.'
+                        : `✅ All tests passed! Score: ${score}%`,
+                    { icon: '🚀' }
+                );
+                // Refresh progress from DB
+                const progressRes = await api.getCourseProgress(id!);
+                if (progressRes.success) setProgress(progressRes.data);
+
+                if (res.unlockResult?.certificateIssued) {
+                    toast.success('🎓 Course Complete! Certificate issued!');
+                    setTimeout(() => navigate(`/certificate/${id}`), 1500);
+                } else {
+                    setTimeout(() => handleNextLesson(), 1200);
+                }
             } else {
-                toast.error('Some test cases failed. Try again.');
+                toast.error(`❌ ${res.score ?? 0}% — Some tests failed. Keep trying!`);
+                setIsChatOpen(true); // Auto-open AI tutor for help
             }
-        } catch (err) {
-            toast.error('Runtime Error: Check your logic');
+        } catch (err: any) {
+            const errMsg = err?.message || 'Runtime error';
+            toast.error(`Runtime Error: ${errMsg.slice(0, 80)}`);
+            // Still show error in results panel
+            setCodingResult({ passed: false, score: 0, results: [], error: errMsg });
+            setIsChatOpen(true);
         } finally {
             setIsRunning(false);
         }
     };
+
 
     const handleQuizSubmit = async () => {
         try {
@@ -274,7 +310,7 @@ if (status === 'success') {
                                 handleLessonComplete();
                             }
                         }}
-                        disabled={isCompleting || (currentLesson?.type === 'video' && videoProgress < 0.8)}
+                        disabled={isCompleting}
                         className={cn(
                             "rounded-full px-6 h-10 text-[10px] font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center gap-2",
                             isLessonDone(currentLesson?._id)
@@ -303,7 +339,7 @@ if (status === 'success') {
                         <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400"><ChevronLeft size={16} /></Button>
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4">
-                        {course?.weeks?.map((week: any) => (
+                        {(course?.weeks || (course?.modules ? [{ modules: course.modules, title: 'Modules', _id: 'flat' }] : [])).map((week: any) => (
                             <div key={week._id} className="space-y-1">
                                 <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-3 py-2">{week.title}</div>
                                 {week.modules?.map((module: any) => (
@@ -339,7 +375,14 @@ if (status === 'success') {
 
                 {/* Content */}
                 <main className="flex-1 flex flex-col bg-[#020203] overflow-hidden relative">
-                    {currentLesson?.type === 'coding' ? (
+                    {currentLesson?.type === 'reading' ? (
+                        <TextLessonViewer
+                            content={currentLesson.content || ''}
+                            lessonId={currentLesson._id}
+                            courseId={id!}
+                            onComplete={() => !isLessonDone(currentLesson._id) && handleLessonComplete()}
+                        />
+                    ) : currentLesson?.type === 'coding' ? (
                         <ResizablePanelGroup direction="horizontal" className="flex-1">
                             {/* Problem Panel */}
                             <ResizablePanel defaultSize={40} minSize={30} className="flex flex-col border-r border-white/5">
@@ -409,6 +452,14 @@ if (status === 'success') {
                                             <span className="text-[10px] font-black uppercase text-slate-600 tracking-widest italic">Neural Sync Active</span>
                                         </div>
                                         <Button
+                                            variant="ghost"
+                                            className="h-8 px-4 text-[10px] font-black uppercase text-indigo-400 border border-indigo-400/20 rounded-full hover:bg-indigo-400/10 gap-2"
+                                            onClick={() => setIsChatOpen(true)}
+                                        >
+                                            <Bot size={12} />
+                                            AI Tutor
+                                        </Button>
+                                        <Button
                                             className="bg-indigo-600 hover:bg-indigo-500 text-[10px] font-black uppercase h-8 px-6 rounded-full shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
                                             onClick={handleCodeSubmit}
                                             disabled={isRunning}
@@ -416,6 +467,13 @@ if (status === 'success') {
                                             {isRunning ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} fill="white" />}
                                             Run Engine
                                         </Button>
+                                        <GitHubSaveButton
+                                            code={code}
+                                            language={currentLesson.codingChallenge?.language || 'python'}
+                                            lessonTitle={currentLesson?.title}
+                                            folder={currentLesson.codingChallenge?.language === 'python' ? 'python' : 'projects'}
+                                            compact
+                                        />
                                     </div>
                                 </div>
                                 <ResizablePanelGroup direction="vertical" className="flex-1">
@@ -449,6 +507,8 @@ if (status === 'success') {
                                             {codingResult && <button onClick={() => setCodingResult(null)} className="text-[9px] text-slate-600 uppercase font-black hover:text-white transition-colors tracking-widest items-center flex gap-1"><RotateCcw size={10} /> Clear</button>}
                                         </div>
                                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 font-mono relative">
+                                            {/* AI feedback now lives in the floating chatbot */}
+
                                             {codingResult ? (
                                                 <div className="space-y-6">
                                                     <div className={cn(
@@ -473,6 +533,25 @@ if (status === 'success') {
                                                         ))}
                                                     </div>
 
+                                                    {/* Failed state: Mark Complete fallback */}
+                                                    {!codingResult.passed && !isLessonDone(currentLesson?._id) && (
+                                                        <div className="mt-4 p-4 rounded-2xl border border-white/5 bg-white/[0.02] flex items-center justify-between gap-4">
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Keep practising or</p>
+                                                                <p className="text-[11px] text-slate-500">Mark complete to continue the course</p>
+                                                            </div>
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={handleLessonComplete}
+                                                                disabled={isCompleting}
+                                                                className="h-8 px-4 rounded-full bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-300 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all shrink-0"
+                                                            >
+                                                                {isCompleting ? <Loader2 size={10} className="animate-spin" /> : '✓ Mark Complete'}
+                                                            </Button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Passed + Course complete → Certificate card */}
                                                     {codingResult.passed && (progress?.overallProgress === 100 || codingResult.unlockResult?.certificateIssued) && (
                                                         <motion.div
                                                             initial={{ opacity: 0, scale: 0.95 }}
@@ -500,6 +579,7 @@ if (status === 'success') {
                                                         </motion.div>
                                                     )}
                                                 </div>
+
                                             ) : (
                                                 <div className="h-full flex flex-col items-center justify-center gap-4 opacity-20">
                                                     <Terminal size={32} />
@@ -514,26 +594,15 @@ if (status === 'success') {
                     ) : (
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-12 relative z-10">
                             <div className="max-w-5xl mx-auto space-y-12 pb-24">
-                                {currentLesson?.type === 'video' && (
-                                    <div className="aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl">
-                                        <PlayerComponent
-                                            ref={playerRef}
-                                            url={currentLesson.videoUrl}
-                                            width="100%"
-                                            height="100%"
-                                            controls
-                                            onProgress={(s: any) => setVideoProgress(s.played)}
-                                        />
-                                    </div>
-                                )}
 
-                                {currentLesson?.type === 'reading' && (
-                                    <TextLessonViewer
-                                        content={currentLesson.content || ''}
-                                        lessonId={currentLesson._id}
-                                        courseId={id!}
-                                        onComplete={() => !isLessonDone(currentLesson._id) && handleLessonComplete()}
-                                    />
+                                {currentLesson?.threeJsBlock && (
+                                    <div className="w-full mb-16 animate-in fade-in zoom-in duration-1000">
+                                        {currentLesson.threeJsBlock.conceptName === 'Variable Scope' ? (
+                                            <ScopeVisualizer />
+                                        ) : (
+                                            <ConceptVisualizer3D block={currentLesson.threeJsBlock} />
+                                        )}
+                                    </div>
                                 )}
 
                                 {currentLesson?.type !== 'reading' &&
@@ -548,6 +617,58 @@ if (status === 'success') {
                                             <div className="text-slate-400 leading-relaxed whitespace-pre-wrap text-lg font-medium max-w-3xl border-l-2 border-white/5 pl-8 italic">{currentLesson?.content}</div>
                                         </div>
                                     )}
+
+                                {currentLesson?.miniChallenge && (
+                                    <div className="bg-indigo-600/5 border border-indigo-500/10 rounded-[2rem] p-8 space-y-4 animate-in slide-in-from-right duration-700">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
+                                                <Zap className="w-5 h-5 text-amber-500 fill-amber-500" /> Mini Logic Challenge
+                                            </h3>
+                                            <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 font-black text-[9px] uppercase">Bonus XP</Badge>
+                                        </div>
+                                        <p className="text-slate-300 font-bold leading-relaxed border-l-2 border-indigo-500/30 pl-4">{currentLesson.miniChallenge}</p>
+                                    </div>
+                                )}
+
+                                {currentLesson?.debuggingBlock && (
+                                    <div className="bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-[2.5rem] p-10 space-y-8 animate-in fade-in duration-1000">
+                                        <div>
+                                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
+                                                <Info className="w-6 h-6 text-indigo-400" /> Debugging Lab
+                                            </h3>
+                                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Identify the logical fracture in the code stream</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 rounded-full w-fit border border-red-500/20">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                                    <span className="text-[9px] font-black text-red-400 uppercase tracking-widest">Broken Sequence</span>
+                                                </div>
+                                                <div className="bg-black/40 p-6 rounded-2xl font-mono text-xs border border-white/5 text-slate-400 leading-relaxed overflow-x-auto whitespace-pre">
+                                                    {currentLesson.debuggingBlock.wrongCode}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full w-fit border border-emerald-500/20">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Stable Core</span>
+                                                </div>
+                                                <div className="bg-black/40 p-6 rounded-2xl font-mono text-xs border border-emerald-500/20 text-emerald-400/80 leading-relaxed overflow-x-auto whitespace-pre">
+                                                    {currentLesson.debuggingBlock.correctedCode}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
+                                            <p className="text-sm text-slate-300 italic font-medium leading-relaxed">
+                                                <span className="text-indigo-400 font-black mr-2 uppercase text-[10px]">Log Report:</span>
+                                                {currentLesson.debuggingBlock.explanation}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {currentLesson?.type === 'quiz' && (
                                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-10 duration-1000">
@@ -662,6 +783,24 @@ if (status === 'success') {
                     )}
                 </main>
             </div>
+
+            {/* ── AI Tutor Chatbot ── */}
+            <AITutorTrigger
+                onClick={() => setIsChatOpen(true)}
+                isOpen={isChatOpen}
+                hasActivity={!!aiFeedback}
+            />
+            <AITutorChat
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                code={code}
+                language={currentLesson?.codingChallenge?.language || currentLesson?.threeJsBlock?.pythonConcept || 'python'}
+                lessonTitle={currentLesson?.title || 'Current Lesson'}
+                problemStatement={currentLesson?.codingChallenge?.problemStatement || currentLesson?.description || 'General code analysis'}
+                courseTitle={course?.title}
+                moduleTitle={currentModule?.title}
+                weekTitle={currentModule?.weekTitle || currentModule?.week ? `Week ${currentModule?.week}` : undefined}
+            />
         </div>
     );
 };

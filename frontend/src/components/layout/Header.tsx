@@ -1,18 +1,7 @@
 import { useState } from 'react';
-import { Search, Bell, Menu, User, Settings, LogOut, Globe } from 'lucide-react';
-import { Input } from '../ui/input';
-import { Button } from '../ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
-} from '../ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Search, Bell, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
     onMobileMenuOpen: () => void;
@@ -21,98 +10,121 @@ interface HeaderProps {
 export default function Header({ onMobileMenuOpen }: HeaderProps) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [searchValue, setSearchValue] = useState('');
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
+
+    const isRecruiter = user?.role === 'recruiter';
+
     return (
-        <header className="h-20 bg-skillbridge-header backdrop-blur-xl border-b border-teal-400 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-40 shadow-sm">
-
-            {/* Left: Mobile Menu + Search */}
-            <div className="flex items-center gap-6 flex-1">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="lg:hidden text-white hover:bg-white/10 rounded-xl"
+        <header className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-[#03040A]/80 backdrop-blur-xl sticky top-0 z-40">
+            {/* Left */}
+            <div className="flex items-center gap-4">
+                <button
                     onClick={onMobileMenuOpen}
+                    className="lg:hidden p-2 rounded-lg hover:bg-white/5 text-[#94A3B8]"
                 >
-                    <Menu className="w-6 h-6" />
-                </Button>
+                    <Menu size={20} />
+                </button>
 
-                <div className="relative max-w-md w-full hidden md:block group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
-                        <Search className="w-4 h-4 text-teal-100 group-focus-within:text-white transition-colors" />
-                    </div>
-                    <Input
+                {/* Search */}
+                <div className="relative flex-1 min-w-[300px] hidden md:block">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                    <input
                         type="text"
-                        placeholder="Search workspace..."
-                        value={searchValue}
-                        onChange={(e) => setSearchValue(e.target.value)}
-                        className="pl-11 h-11 w-full bg-white/10 border-transparent placeholder:text-teal-50 text-white rounded-xl focus:bg-white/20 focus:ring-4 focus:ring-white/10 transition-all text-sm font-bold uppercase tracking-widest"
+                        placeholder={isRecruiter ? "Search candidates, skills..." : "Search courses, lessons..."}
+                        className={`w-full pl-10 pr-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm text-white placeholder:text-[#64748B] focus:outline-none focus:border-${isRecruiter ? '[#7C3AED]' : '[#10B981]'}/50`}
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1.5 py-0.5 border border-white/20 rounded bg-white/10 pointer-events-none opacity-50">
-                        <span className="text-[10px] font-black text-white italic">⌘K</span>
-                    </div>
                 </div>
             </div>
 
-            {/* Right: Actions + Profile */}
-            <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-
-                <div className="h-6 w-[1px] bg-white/20 mx-2 hidden lg:block" />
-
-                {/* Visit Site Button */}
-                <Link
-                    to="/"
-                    className="hidden sm:flex items-center gap-2 px-4 py-2 text-[10px] font-black text-white hover:bg-white/10 rounded-xl transition-all uppercase tracking-[0.2em]"
-                >
-                    <Globe className="w-4 h-4" />
-                    <span>Portal</span>
-                </Link>
-
+            {/* Right */}
+            <div className="flex items-center gap-3">
                 {/* Notifications */}
-                <Button variant="ghost" size="icon" className="h-10 w-10 relative text-white hover:bg-white/10 rounded-xl">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-400 rounded-full ring-2 ring-skillbridge-header animate-pulse"></span>
-                </Button>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#94A3B8] relative"
+                    >
+                        <Bell size={20} />
+                        <span className={`absolute top-1 right-1 w-2 h-2 ${isRecruiter ? 'bg-[#7C3AED]' : 'bg-[#10B981]'} rounded-full`} />
+                    </button>
 
-                {/* Profile Dropdown */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button className="flex items-center gap-3 p-1 rounded-full hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-white/20 group ml-2">
-                            <div className="relative">
-                                <Avatar className="h-10 w-10 border-2 border-white/20 shadow-sm ring-2 ring-transparent group-hover:ring-white/30 transition-all">
-                                    <AvatarImage src={user?.avatar} />
-                                    <AvatarFallback className="bg-skillbridge-button text-skillbridge-sidebar font-black text-sm">
-                                        {user?.name?.[0]?.toUpperCase() || 'S'}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-skillbridge-header rounded-full shadow-lg" />
+                    {showNotifications && (
+                        <div className="absolute right-0 top-full mt-2 w-80 bg-[#0D121F] border border-white/5 rounded-xl overflow-hidden z-50 shadow-2xl">
+                            <div className="p-3 border-b border-white/10">
+                                <p className="text-sm font-medium text-white">Notifications</p>
                             </div>
-                            <div className="text-left hidden lg:block pr-2">
-                                <p className="text-xs font-black text-white leading-none uppercase tracking-tighter">{user?.name?.split(' ')[0] || 'Student'}</p>
-                                <p className="text-[9px] text-teal-50 mt-1 font-black uppercase tracking-widest opacity-70">Expert Alumnus</p>
+                            <div className="p-2 space-y-1">
+                                {isRecruiter ? (
+                                    <>
+                                        <div className="p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                                            <p className="text-sm text-white">New applicant</p>
+                                            <p className="text-xs text-[#94A3B8]">A student applied to Frontend Intern</p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                                            <p className="text-sm text-white">New lesson available</p>
+                                            <p className="text-xs text-[#94A3B8]">React Fundamentals - State Management</p>
+                                        </div>
+                                        <div className="p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                                            <p className="text-sm text-white">Assignment reminder</p>
+                                            <p className="text-xs text-[#94A3B8]">Dashboard Layout due in 2 days</p>
+                                        </div>
+                                    </>
+                                )}
                             </div>
-                        </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64 mt-2 p-2 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800">
-                        <DropdownMenuLabel className="font-bold px-3 py-2 text-slate-900 dark:text-white uppercase text-xs tracking-widest opacity-50">Profile Menu</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer rounded-xl px-3 py-2.5 mb-1 group" onClick={() => navigate('/dashboard/profile')}>
-                            <User className="w-4 h-4 mr-3 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-                            <span className="font-semibold text-sm">My Profile</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer rounded-xl px-3 py-2.5 mb-1 group" onClick={() => navigate('/dashboard/settings')}>
-                            <Settings className="w-4 h-4 mr-3 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-                            <span className="font-semibold text-sm">Account Settings</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            className="text-rose-600 cursor-pointer rounded-xl px-3 py-2.5 group focus:bg-rose-50 dark:focus:bg-rose-900/10"
-                            onClick={() => { logout(); navigate('/'); }}
-                        >
-                            <LogOut className="w-4 h-4 mr-3 group-hover:-translate-x-1 transition-transform" />
-                            <span className="font-bold text-sm">Sign Out</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                        </div>
+                    )}
+                </div>
+
+                {/* Profile */}
+                <div className="relative">
+                    <button
+                        onClick={() => setShowProfile(!showProfile)}
+                        className="flex items-center gap-3 pl-3 pr-1 py-1 rounded-xl hover:bg-white/5 transition-colors"
+                    >
+                        <div className="text-right hidden sm:block">
+                            <p className="text-sm text-white font-medium">{user?.name || (isRecruiter ? 'Recruiter' : 'Student')}</p>
+                            <p className="text-xs text-[#64748B] font-bold uppercase tracking-widest">{user?.role || 'student'}</p>
+                        </div>
+                        <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${isRecruiter ? 'from-[#7C3AED] to-[#4F46E5]' : 'from-[#10B981] to-[#00D4FF]'} flex items-center justify-center text-white font-bold border border-white/10`}>
+                            {user?.name?.charAt(0)?.toUpperCase() || (isRecruiter ? 'R' : 'S')}
+                        </div>
+                    </button>
+
+                    {showProfile && (
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-[#0D121F] border border-white/5 rounded-xl overflow-hidden z-50 shadow-2xl">
+                            <div className="p-4 border-b border-white/10">
+                                <p className="text-sm font-medium text-white">{user?.name}</p>
+                                <p className="text-xs text-[#94A3B8]">{user?.email}</p>
+                            </div>
+                            <div className="p-2">
+                                <button
+                                    onClick={() => { setShowProfile(false); navigate('/dashboard/profile'); }}
+                                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-[#94A3B8] hover:bg-white/5 hover:text-white transition-colors"
+                                >
+                                    Profile
+                                </button>
+                                { !isRecruiter && (
+                                    <button
+                                        onClick={() => { setShowProfile(false); navigate('/dashboard/settings'); }}
+                                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-[#94A3B8] hover:bg-white/5 hover:text-white transition-colors"
+                                    >
+                                        Settings
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => { setShowProfile(false); logout(); navigate('/'); }}
+                                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
+                                >
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
     );

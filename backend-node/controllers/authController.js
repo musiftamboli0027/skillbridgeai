@@ -15,7 +15,7 @@ const generateRefreshToken = (id) => {
 // @desc    Register a new user
 // @route   POST /api/auth/register
 exports.register = asyncHandler(async (req, res) => {
-  let { name, email, password, role } = req.body;
+  let { name, email, password, role, universityId, collegeId, year, branch, careerInterest, phone } = req.body;
   email = email.trim().toLowerCase();
 
   const userExists = await User.findOne({ email });
@@ -27,17 +27,59 @@ exports.register = asyncHandler(async (req, res) => {
   const verificationToken = crypto.randomBytes(32).toString('hex');
   const hashedToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
 
+  // Find or Create University/College if names are provided instead of IDs
+  const University = require('../models/University');
+  const College = require('../models/College');
+
+  const mongoose = require('mongoose');
+  let uId = universityId;
+  let cId = collegeId;
+
+  if (universityId && typeof universityId === 'string' && !mongoose.Types.ObjectId.isValid(universityId)) {
+    // If it's a name, find or create
+    let uni = await University.findOne({ name: new RegExp(`^${universityId}$`, 'i') });
+    if (!uni) uni = await University.create({ name: universityId });
+    uId = uni._id;
+  }
+
+  if (collegeId && typeof collegeId === 'string' && !mongoose.Types.ObjectId.isValid(collegeId) && uId) {
+    let coll = await College.findOne({ name: new RegExp(`^${collegeId}$`, 'i'), universityId: uId });
+    if (!coll) coll = await College.create({ name: collegeId, universityId: uId });
+    cId = coll._id;
+  }
+
+  let recruiterProfile = undefined;
+  if (role === 'recruiter') {
+    recruiterProfile = {
+      companyName: req.body.companyName || '',
+      companyWebsite: req.body.companyWebsite || '',
+      companyLogo: req.body.companyLogo || '',
+      companyDescription: req.body.companyDescription || '',
+      verificationStatus: 'Pending',
+      isVerified: false
+    };
+  }
+
   const user = await User.create({
     name,
+    username: req.body.username, // Support username from body
     email,
     password,
     role: role || 'student',
+    universityId: uId,
+    collegeId: cId,
+    year,
+    branch,
+    careerInterest,
+    phone,
+    recruiterProfile,
+    onboardingComplete: role === 'recruiter' ? true : !!(uId && cId && year && branch),
     isVerified: false,
     emailVerificationToken: hashedToken,
     emailVerificationExpires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
   });
 
-  const verificationUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${verificationToken}&email=${email}`;
+  const verificationUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
 
   try {
     await sendEmail({
@@ -101,7 +143,14 @@ exports.verifyEmail = asyncHandler(async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        universityId: user.universityId,
+        collegeId: user.collegeId,
+        year: user.year,
+        branch: user.branch,
+        careerInterest: user.careerInterest,
+        recruiterProfile: user.recruiterProfile,
+        onboardingComplete: user.onboardingComplete
       }
     });
   }
@@ -137,7 +186,14 @@ exports.verifyEmail = asyncHandler(async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      universityId: user.universityId,
+      collegeId: user.collegeId,
+      year: user.year,
+      branch: user.branch,
+      careerInterest: user.careerInterest,
+      recruiterProfile: user.recruiterProfile,
+      onboardingComplete: user.onboardingComplete
     }
   });
 });
@@ -164,7 +220,7 @@ exports.resendVerification = asyncHandler(async (req, res) => {
   user.emailVerificationExpires = Date.now() + 30 * 60 * 1000;
   await user.save();
 
-  const verificationUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${verificationToken}&email=${email}`;
+  const verificationUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
 
   await sendEmail({
     email: user.email,
@@ -182,9 +238,15 @@ exports.resendVerification = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/login
 exports.login = asyncHandler(async (req, res) => {
   let { email, password } = req.body;
-  email = email.trim().toLowerCase();
+  const identifier = email.trim();
 
-  const user = await User.findOne({ email }).select('+password');
+  const user = await User.findOne({
+    $or: [
+      { email: identifier.toLowerCase() },
+      { phone: identifier }
+    ]
+  }).select('+password');
+
   if (!user || !(await user.comparePassword(password))) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
@@ -198,7 +260,7 @@ exports.login = asyncHandler(async (req, res) => {
     user.emailVerificationExpires = Date.now() + 30 * 60 * 1000;
     await user.save();
 
-    const verificationUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${verificationToken}&email=${email}`;
+    const verificationUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
 
     console.log('--- LOGIN ACTIVATION LINK (DEBUG) ---');
     console.log(verificationUrl);
@@ -239,24 +301,32 @@ exports.login = asyncHandler(async (req, res) => {
     maxAge: 24 * 60 * 60 * 1000
   });
 
-  // Populate enrolled courses before sending response
-  await user.populate({
-    path: 'enrolledCourses.course',
-    model: 'Course'
-  });
+  // Populate enrolled courses and SaaS fields before sending response
+  await user.populate([
+    { path: 'enrolledCourses.course', model: 'Course' },
+    { path: 'universityId', select: 'name' },
+    { path: 'collegeId', select: 'name' }
+  ]);
 
   res.status(200).json({
     success: true,
     token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      githubId: user.githubId,
-      avatar: user.avatar,
-      enrolledCourses: user.enrolledCourses || []
-    }
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        githubId: user.githubId,
+        avatar: user.avatar,
+        enrolledCourses: user.enrolledCourses || [],
+        universityId: user.universityId,
+        collegeId: user.collegeId,
+        year: user.year,
+        branch: user.branch,
+        careerInterest: user.careerInterest,
+        recruiterProfile: user.recruiterProfile,
+        onboardingComplete: user.onboardingComplete
+      }
   });
 });
 
@@ -279,7 +349,7 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
   await user.save();
 
-  const resetUrl = `${process.env.FRONTEND_URL}/#/reset-password?token=${resetToken}&email=${email}`;
+  const resetUrl = `${process.env.FRONTEND_URL}/#/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
   try {
     await sendEmail({
@@ -344,9 +414,12 @@ exports.logout = asyncHandler(async (req, res) => {
 });
 
 exports.getMe = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id).populate({
-    path: 'enrolledCourses.course',
-    model: 'Course'
-  });
+  const user = await User.findById(req.user.id)
+    .populate({
+      path: 'enrolledCourses.course',
+      model: 'Course'
+    })
+    .populate('universityId', 'name')
+    .populate('collegeId', 'name');
   res.status(200).json({ success: true, user });
 });

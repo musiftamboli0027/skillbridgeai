@@ -46,6 +46,11 @@ function TestimonialCard({
   const [isHovered, setIsHovered] = useState(false);
 
   const getTransform = () => {
+    // Disable 3D transforms on mobile (< 768px) as they cause overflow
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile) {
+      return isVisible ? 'scale(1)' : 'scale(0.9)';
+    }
     if (index === 0) {
       return isVisible
         ? 'translateZ(-100px) translateX(-20%) rotateY(25deg) scale(0.85)'

@@ -10,10 +10,9 @@ const quickLinks = [
 ];
 
 const companyLinks = [
-  { name: 'Careers', href: '/careers' },
   { name: 'Life at SKILLBRIDGE', href: '/life' },
-  { name: 'Blog', href: '/blogs' },
   { name: 'FAQ', href: '#' },
+  { name: 'Recruiter Login', href: '/recruiter-login' },
 ];
 
 export default function Footer() {
@@ -99,8 +98,7 @@ export default function Footer() {
               >
                 <MapPin className="w-5 h-5 text-[#8b5cf6] flex-shrink-0 mt-0.5" />
                 <span>
-                  B - 613, 6th floor, Suratwala Mark Plazzo, Hinjawadi Phase 1,
-                  Pimpri-Chinchwad, Maharashtra 411057
+                 xyz
                 </span>
               </div>
               <div
@@ -217,7 +215,7 @@ export default function Footer() {
             </p>
             <form
               onSubmit={handleSubmit}
-              className="flex gap-2"
+              className="flex flex-col sm:flex-row gap-2"
               style={{
                 opacity: isVisible ? 1 : 0,
                 transform: isVisible ? 'scale(1)' : 'scale(0.95)',

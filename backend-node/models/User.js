@@ -40,8 +40,42 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['student', 'instructor', 'admin'],
+    enum: ['student', 'instructor', 'admin', 'university_admin', 'super_admin', 'recruiter'],
     default: 'student'
+  },
+  // Recruiter-specific fields
+  recruiterProfile: {
+    companyName: { type: String, trim: true, default: '' },
+    companyWebsite: { type: String, trim: true, default: '' },
+    companyLogo: { type: String, default: '' },
+    companyDescription: { type: String, maxlength: 1000, default: '' },
+    isVerified: { type: Boolean, default: false },
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    verificationStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' }
+  },
+  universityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'University'
+  },
+  collegeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'College'
+  },
+  year: {
+    type: String,
+    enum: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
+  },
+  branch: {
+    type: String,
+    trim: true
+  },
+  careerInterest: {
+    type: String,
+    trim: true
+  },
+  onboardingComplete: {
+    type: Boolean,
+    default: false
   },
   phone: {
     type: String,
@@ -99,10 +133,75 @@ const userSchema = new mongoose.Schema({
   emailVerificationExpires: Date,
   resetPasswordToken: String,
   resetPasswordExpire: Date,
-  refreshToken: String
+  refreshToken: String,
+
+  // Gamification
+  xp: {
+    type: Number,
+    default: 0
+  },
+  rank: {
+    type: String,
+    enum: ['Novice', 'Apprentice', 'Specialist', 'Expert', 'Master', 'Legend'],
+    default: 'Novice'
+  },
+  badges: [{
+    name: String,
+    icon: String,
+    awardedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  streakCount: {
+    type: Number,
+    default: 0
+  },
+  lastActivityDate: Date,
+
+  // ── Collaboration Module Fields ──
+  primaryDomain: {
+    type: String,
+    enum: ['Software Development', 'AI/ML', 'Design', 'Marketing', 'Business', 'Data', 'DevOps', 'Mobile', 'Cybersecurity', ''],
+    default: ''
+  },
+  secondarySkills: {
+    type: [String],
+    default: []
+  },
+  domainLevel: {
+    type: String,
+    enum: ['Beginner', 'Intermediate', 'Advanced', ''],
+    default: ''
+  },
+  collaborationScore: {
+    type: Number,
+    default: 0
+  },
+  leadershipScore: {
+    type: Number,
+    default: 0
+  },
+  technicalScore: {
+    type: Number,
+    default: 0
+  },
+  secondYearPerformance: {
+    projectsCompleted: { type: Number, default: 0 },
+    avgScore: { type: Number, default: 0 },
+    totalContributions: { type: Number, default: 0 },
+    deployedApps: { type: Number, default: 0 },
+    placementReady: { type: Boolean, default: false }
+  },
+  collaborationHistory: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CollabProject'
+  }]
 }, {
   timestamps: true
 });
+
+userSchema.index({ collegeId: 1, year: 1, role: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

@@ -1,11 +1,8 @@
-import { motion } from 'framer-motion';
-import { User, ArrowRight, Clock } from 'lucide-react';
-import { Progress } from '../ui/progress';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import type { Course } from '../../types/dashboard';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '../../lib/utils';
+import { motion } from 'framer-motion';
+import { Play, Trophy, Clock } from 'lucide-react';
+import { Button } from '../ui/button';
+import type { Course } from '../../types/dashboard';
 
 interface CourseCardProps {
     course: Course;
@@ -15,101 +12,76 @@ interface CourseCardProps {
 export default function CourseCard({ course, index }: CourseCardProps) {
     const navigate = useNavigate();
 
-    const handleContinue = () => {
-        navigate(`/learn/${course.id}`);
-    };
-
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="group bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-teal-900/5 transition-all duration-500 flex flex-col h-full relative"
+            transition={{ delay: index * 0.08, duration: 0.5 }}
+            onClick={() => navigate(course.progress === 100 ? `/certificate/${course.id}` : `/course/${course.id}/learn`)}
+            className="group glass-card rounded-[2rem] border-white/5 overflow-hidden cursor-pointer hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] transition-all duration-500 relative"
         >
             {/* Thumbnail */}
-            <div
-                className="h-48 relative overflow-hidden cursor-pointer"
-                onClick={handleContinue}
-            >
+            <div className="h-44 relative overflow-hidden">
                 <img
-                    src={course.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80'}
+                    src={course.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60'}
                     alt={course.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[1.5s] ease-out opacity-80"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-                <div className="absolute top-4 left-4">
-                    <Badge className="bg-white/20 backdrop-blur-md text-white border-white/20 font-bold px-3 py-1 text-[10px] uppercase tracking-wider">
-                        {course.category}
-                    </Badge>
-                </div>
-
-                <div className="absolute bottom-4 left-4 right-4 text-white">
-                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">
-                        <User className="w-3 h-3" />
-                        <span>{course.instructor}</span>
-                    </div>
-                    <h3 className="font-black text-lg leading-tight line-clamp-1 group-hover:text-skillbridge-button transition-colors uppercase tracking-tight">
-                        {course.title}
-                    </h3>
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#03040A] via-transparent to-transparent" />
+                <span className="absolute top-4 left-4 px-3 py-1 bg-[#00D4FF]/10 backdrop-blur-md text-[#00D4FF] border border-[#00D4FF]/20 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                    {course.category}
+                </span>
             </div>
 
             {/* Content */}
-            <div className="p-6 flex flex-col flex-1 space-y-6">
-                <div className="space-y-4">
-                    <div className="flex justify-between items-end">
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mastery</p>
-                            <span className="text-xl font-black text-skillbridge-text">{course.progress}%</span>
-                        </div>
-                        <span className="text-xs font-bold text-slate-500 italic">
-                            {course.completedLessons}/{course.totalLessons} Lessons
-                        </span>
+            <div className="p-6 space-y-4">
+                <h3 className="text-lg font-black text-white uppercase tracking-tight group-hover:text-[#00D4FF] transition-colors line-clamp-2">
+                    {course.title}
+                </h3>
+
+                <div className="flex items-center gap-2 text-[10px] font-bold text-[#64748B] uppercase tracking-[0.2em]">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                    {course.completedLessons} <span className="opacity-30">/</span> {course.totalLessons} UNITS
+                </div>
+
+                {/* Progress */}
+                <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black uppercase text-[#64748B] tracking-widest">Progress</span>
+                        <span className="text-sm font-black text-[#00D4FF] tracking-widest">{course.progress}%</span>
                     </div>
-                    <div className="relative">
-                        <Progress value={course.progress} className="h-2 bg-slate-50" />
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
                         <motion.div
-                            className="absolute -top-1 w-2 h-4 bg-skillbridge-header rounded-full shadow-lg"
-                            style={{ left: `${course.progress}%` }}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${course.progress}%` }}
+                            transition={{ duration: 1, ease: 'easeOut' }}
+                            className="h-full bg-gradient-to-r from-[#00D4FF] to-[#7C3AED] rounded-full"
                         />
                     </div>
+                </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                        <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-indigo-600">
-                            <Clock className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Up Next</p>
-                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 line-clamp-1">{course.nextLesson}</p>
-                        </div>
-                    </div>
-
-                    <div className="pt-2 mt-auto">
-                        <Button
-                            onClick={course.progress === 100 ? () => navigate(`/certificate/${course.id}`) : handleContinue}
-                            className={cn(
-                                "w-full h-12 font-black rounded-2xl transition-all shadow-xl group",
-                                course.progress === 100
-                                    ? "bg-green-500 hover:bg-green-400 text-white shadow-green-900/10"
-                                    : "bg-skillbridge-button text-skillbridge-sidebar hover:bg-teal-400 shadow-teal-900/5"
-                            )}
-                        >
-                            {course.progress === 100 ? 'View Certificate' : 'Resume Training'}
-                            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                    </div>
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-2">
+                    <p className="text-[10px] font-bold text-[#64748B] flex items-center gap-1 uppercase tracking-wider">
+                        <Clock className="w-3.5 h-3.5 text-[#7C3AED]" />
+                        {course.nextLesson?.slice(0, 25) || 'Continue'}
+                    </p>
+                    <Button
+                        size="icon"
+                        className={`h-10 w-10 rounded-xl transition-all p-0 ${
+                            course.progress === 100
+                                ? 'bg-[#10B981] hover:bg-[#10B981]/90 text-white'
+                                : 'bg-white text-[#0A0E1A] hover:bg-[#00D4FF]'
+                        }`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(course.progress === 100 ? `/certificate/${course.id}` : `/course/${course.id}/learn`);
+                        }}
+                    >
+                        {course.progress === 100 ? <Trophy className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+                    </Button>
                 </div>
             </div>
-
-            {/* Float Badge for 100% completion */}
-            {course.progress === 100 && (
-                <div className="absolute top-0 right-0 p-4">
-                    <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg animate-bounce">
-                        ✓
-                    </div>
-                </div>
-            )}
         </motion.div>
     );
 }

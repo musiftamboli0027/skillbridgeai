@@ -1,78 +1,80 @@
-const { Resend } = require("resend");
-
-// Initialize Resend with API Key lazily to prevent startup crashes if key is missing
-let resend;
-try {
-  if (process.env.RESEND_API_KEY) {
-    resend = new Resend(process.env.RESEND_API_KEY);
-  } else {
-    console.warn("[Email Service] ⚠️ RESEND_API_KEY is missing. Email features will fail.");
-  }
-} catch (error) {
-  console.error("[Email Service] ❌ Failed to initialize Resend client:", error.message);
-}
+const nodemailer = require("nodemailer");
 
 /**
- * Send email using Resend API
+ * Send email using Nodemailer (Gmail SMTP)
  * @param {Object} options - { email, subject, html }
  */
 const sendEmail = async (options) => {
   try {
-    if (!resend) {
-      // Re-try initialization if it failed or wasn't configured
-      if (process.env.RESEND_API_KEY) {
-        resend = new Resend(process.env.RESEND_API_KEY);
-      } else {
-        throw new Error("RESEND_API_KEY is missing. Please add it to your environment variables.");
-      }
+    // Basic validation
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      throw new Error("Email configuration missing in .env (EMAIL_USER or EMAIL_PASS)");
     }
 
-    console.log(`[Email Service] Attempting to send email via Resend to: ${options.email}`);
-
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-    const fromName = process.env.FROM_NAME || "SkillBridge AI";
-
-    const { data, error } = await resend.emails.send({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: options.email,
-      subject: options.subject,
-      html: options.html,
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.EMAIL_PORT) || 465,
+      secure: true, // true for 465, false for other ports
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      // Debug info
+      debug: process.env.NODE_ENV === 'development',
+      logger: process.env.NODE_ENV === 'development'
     });
 
-    if (error) {
-      console.error(`[Email Service] ❌ Resend API Error:`, error);
-      throw new Error(error.message);
-    }
+    const fromName = process.env.FROM_NAME || "SkillBridge AI";
+    const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER;
 
-    console.log(`[Email Service] ✅ Email sent! Resource ID: ${data.id}`);
-    return data;
+    const mailOptions = {
+      from: `"${fromName}" <${fromEmail}>`,
+      to: options.email,
+      subject: options.subject || "No Subject",
+      html: options.html,
+    };
+
+    console.log(`[Email Service] Attempting to dispatch email to: ${options.email}`);
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log(`[Email Service] ✅ Email sent successfully! MessageID: ${info.messageId}`);
+    return info;
 
   } catch (error) {
-    console.error(`[Email Service] ❌ Failed to send email to ${options.email}:`, error.message);
-    throw new Error(`Email sending failed: ${error.message}`);
+    console.error(`[Email Service] ❌ Fatal Error:`, error.message);
+    throw new Error(`Email failed: ${error.message}`);
   }
 };
 
 const getVerificationEmailTemplate = (name, url) => {
   return `
-    <div style="font-family: Arial; max-width:600px; margin:auto;">
-      <h2 style="color:#f47c20;">Welcome to SkillBridge AI!</h2>
-      <p>Hello ${name},</p>
-      <p>Please verify your email:</p>
-      <a href="${url}" style="padding:10px 20px;background:#f47c20;color:#fff;text-decoration:none;border-radius:5px;">Verify Email</a>
-      <p>If button doesn't work:</p>
-      <a href="${url}">${url}</a>
+    <div style="font-family: Arial, sans-serif; max-width:600px; margin:auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+      <h2 style="color:#f47c20;">Welcome to SkillBridge AI, ${name}!</h2>
+      <p>Thank you for joining us. Please verify your email address to unlock all features:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${url}" style="padding:12px 24px; background:#f47c20; color:#fff; text-decoration:none; border-radius:5px; font-weight: bold; display: inline-block;">Verify My Email</a>
+      </div>
+      <p style="color: #666; font-size: 14px;">If the button above does not work, copy and paste this link into your browser:</p>
+      <p style="color: #f47c20; font-size: 12px; word-break: break-all;">${url}</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+      <p style="color: #999; font-size: 12px;">This is an automated email. Please do not reply.</p>
     </div>
   `;
 };
 
 const getResetPasswordEmailTemplate = (name, url) => {
   return `
-    <div style="font-family: Arial; max-width:600px; margin:auto;">
-      <h2 style="color:#f47c20;">Password Reset</h2>
-      <p>Hello ${name},</p>
-      <p>Click below to reset password:</p>
-      <a href="${url}" style="padding:10px 20px;background:#f47c20;color:#fff;text-decoration:none;border-radius:5px;">Reset Password</a>
+    <div style="font-family: Arial, sans-serif; max-width:600px; margin:auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+      <h2 style="color:#f47c20;">Password Reset Request</h2>
+      <p>Hello ${name}, we received a request to reset your password. Click the button below to continue:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${url}" style="padding:12px 24px; background:#f47c20; color:#fff; text-decoration:none; border-radius:5px; font-weight: bold; display: inline-block;">Reset Password</a>
+      </div>
+      <p style="color: #666; font-size: 14px;">This link will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+      <p style="color: #999; font-size: 12px;">SkillBridge AI Team</p>
     </div>
   `;
 };
