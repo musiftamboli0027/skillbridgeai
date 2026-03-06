@@ -218,11 +218,11 @@ exports.resendVerification = asyncHandler(async (req, res) => {
 
   const verificationUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
 
-  await sendEmail({
+  sendEmail({
     email: user.email,
     subject: 'Email Verification - SkillBridge',
     html: getVerificationEmailTemplate(user.name, verificationUrl)
-  });
+  }).catch(err => console.error('Resend verification email error:', err));
 
   res.status(200).json({
     success: true,
@@ -263,11 +263,11 @@ exports.login = asyncHandler(async (req, res) => {
     console.log('--------------------------------------');
 
     try {
-      await sendEmail({
-        email: user.email,
-        subject: 'Activate Your Account - SkillBridge',
-        html: getVerificationEmailTemplate(user.name, verificationUrl)
-      });
+    sendEmail({
+      email: user.email,
+      subject: 'Activate Your Account - SkillBridge',
+      html: getVerificationEmailTemplate(user.name, verificationUrl)
+    }).catch(err => console.error('Login activation email error:', err));
 
       return res.status(401).json({
         success: false,
@@ -348,11 +348,11 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   const resetUrl = `${process.env.FRONTEND_URL}/#/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
   try {
-    await sendEmail({
+    sendEmail({
       email: user.email,
       subject: 'Password Reset Request - SkillBridge',
       html: getResetPasswordEmailTemplate(user.name, resetUrl)
-    });
+    }).catch(err => console.error('Password reset email error:', err));
 
     res.status(200).json({
       success: true,

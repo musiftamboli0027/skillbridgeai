@@ -1,56 +1,26 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Send email using Nodemailer (Gmail SMTP)
+ * Send email using Resend API
  * @param {Object} options - { email, subject, html }
  */
-const sendEmail = async (options) => {
+const sendEmail = async ({ email, subject, html }) => {
   try {
-    // Basic validation
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error("Email configuration missing in .env (EMAIL_USER or EMAIL_PASS)");
-    }
-
-    const port = parseInt(process.env.EMAIL_PORT) || 587;
-    
-    // Create transporter configured for Gmail / Render deployment
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: port,
-      secure: port === 465, 
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      // Force IPv4 - Render/Cloud environments often have IPv6 routing issues with Gmail
-      family: 4, 
-      tls: {
-        rejectUnauthorized: process.env.NODE_ENV === 'production'
-      },
-      debug: process.env.NODE_ENV === 'development',
-      logger: process.env.NODE_ENV === 'development'
+    const response = await resend.emails.send({
+      from: process.env.EMAIL_FROM || "SkillBridge <onboarding@resend.dev>",
+      to: email,
+      subject: subject,
+      html: html
     });
 
-    const fromName = process.env.FROM_NAME || "SkillBridge AI";
-    const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER;
-
-    const mailOptions = {
-      from: `"${fromName}" <${fromEmail}>`,
-      to: options.email,
-      subject: options.subject || "No Subject",
-      html: options.html,
-    };
-
-    console.log(`[Email Service] Attempting to dispatch email to: ${options.email}`);
-
-    const info = await transporter.sendMail(mailOptions);
-
-    console.log(`[Email Service] ✅ Email sent successfully! MessageID: ${info.messageId}`);
-    return info;
+    console.log("[Email Service] Email dispatched via Resend:", response);
+    return response;
 
   } catch (error) {
-    console.error(`[Email Service] ❌ Fatal Error:`, error.message);
-    throw new Error(`Email failed: ${error.message}`);
+    console.error("[Email Service] Resend Error:", error);
+    // Don't throw to prevent crashing the response flow
   }
 };
 
