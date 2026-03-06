@@ -157,6 +157,7 @@ app.use('/api/hub', require('./routes/hubRoutes'));
 app.use('/api/placement', require('./routes/placementRoutes'));
 app.use('/api/collaboration', require('./routes/collaborationRoutes'));
 app.use('/api/community', require('./routes/communityRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/jobs', require('./routes/jobRoutes'));
 
 

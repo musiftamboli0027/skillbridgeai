@@ -33,25 +33,33 @@ export default function MyCourses() {
                 const res = await api.getMyEnrollments();
                 if (res.success) {
                     const mapped: CourseItem[] = res.enrollments
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         .filter((e: any) => e.course)
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         .map((e: any) => ({
-                            id: e.course?._id || e.course?.id || Math.random().toString(),
+                            id: (typeof e.course === 'string' ? e.course : (e.course?._id || e.course?.id)) || '',
                             title: e.course?.title || 'Unknown Course',
                             instructor: e.course?.instructor?.name || 'Instructor',
                             thumbnail: e.course?.image || '',
                             progress: e.overallProgress || e.progress || 0,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             totalLessons: (e.course?.modules || []).reduce(
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 (acc: number, m: any) => acc + (m.lessons?.length || 0), 0
                             ) || (e.course?.weeks || []).reduce(
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 (acc: number, w: any) =>
                                     acc + (w.modules || []).reduce(
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                         (mAcc: number, m: any) => mAcc + (m.lessons?.length || 0), 0
                                     ), 0
                             ) || 0,
                             completedLessons: e.completedLessons?.length || 0,
                             category: e.course?.category || 'General',
                             lastAccessed: e.lastAccessed || new Date().toISOString(),
-                        }));
+                        }))
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        .filter((c: any) => c.id);
                     setCourses(mapped);
                 }
             } catch (err) {

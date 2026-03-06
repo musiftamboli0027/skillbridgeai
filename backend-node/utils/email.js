@@ -11,14 +11,20 @@ const sendEmail = async (options) => {
       throw new Error("Email configuration missing in .env (EMAIL_USER or EMAIL_PASS)");
     }
 
-    // Create transporter
+    const port = parseInt(process.env.EMAIL_PORT) || 587;
+    
+    // Create transporter configured for Gmail / Render deployment
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.EMAIL_PORT) || 465,
-      secure: true, // true for 465, false for other ports
+      port: port,
+      secure: port === 465, // true for 465, false for other ports (like 587)
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        // Allows testing without fully valid certificates, sometimes needed in Render
+        rejectUnauthorized: process.env.NODE_ENV === 'production'
       },
       // Debug info
       debug: process.env.NODE_ENV === 'development',

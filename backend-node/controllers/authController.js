@@ -81,24 +81,20 @@ exports.register = asyncHandler(async (req, res) => {
 
   const verificationUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
 
-  try {
-    await sendEmail({
-      email: user.email,
-      subject: 'Verify Your Email - SkillBridge',
-      html: getVerificationEmailTemplate(user.name, verificationUrl)
-    });
+  // Non-blocking email sending to avoid delaying response
+  sendEmail({
+    email: user.email,
+    subject: 'Verify Your Email - SkillBridge',
+    html: getVerificationEmailTemplate(user.name, verificationUrl)
+  }).catch(err => {
+    console.error('Registration email background sending error:', err);
+    // Log the error but don't crash since the user is already created
+  });
 
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful! Please check your email to verify your account.'
-    });
-  } catch (err) {
-    console.error('Registration email error:', err);
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful, but we could not send the verification email. Please try logging in to resend it.'
-    });
-  }
+  res.status(201).json({
+    success: true,
+    message: 'Registration successful! Please check your email to verify your account.'
+  });
 });
 
 // @desc    Verify email address and login directly

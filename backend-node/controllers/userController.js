@@ -1,4 +1,13 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const Notification = require('../models/Notification');
+
+// Helper — create a notification for a user
+const createNotification = async (userId, { type, title, message, icon, color, link }) => {
+    try {
+        await Notification.create({ userId, type: type || 'system', title, message, icon, color, link });
+    } catch (e) { console.error('Notification create error:', e.message); }
+};
 
 // @desc    Get user portfolio
 // @route   GET /api/users/portfolio/:username
@@ -155,6 +164,85 @@ exports.unlinkGitHub = async (req, res) => {
         await GitIntegration.deleteOne({ userId: req.user.id });
 
         res.json({ success: true, message: 'GitHub account unlinked successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Change password
+// @route   PUT /api/users/change-password
+// @access  Private
+exports.changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: 'Please provide current and new password' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+        }
+
+        const user = await User.findById(req.user.id).select('+password');
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+
+        user.password = await bcrypt.hash(newPassword, 12);
+        await user.save();
+
+        await createNotification(user._id, {
+            type: 'system',
+            title: 'Password Changed',
+            message: 'Your account password was changed successfully.',
+            icon: 'lock',
+            color: '#10B981'
+        });
+
+        res.json({ success: true, message: 'Password changed successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Toggle 2FA (stub — sets a flag on the user)
+// @route   PUT /api/users/two-factor
+// @access  Private
+exports.toggleTwoFactor = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const newState = !user.twoFactorEnabled;
+        user.twoFactorEnabled = newState;
+        await user.save();
+
+        await createNotification(user._id, {
+            type: 'system',
+            title: newState ? '2FA Enabled' : '2FA Disabled',
+            message: newState
+                ? 'Two-factor authentication is now active on your account.'
+                : 'Two-factor authentication has been disabled.',
+            icon: 'shield',
+            color: newState ? '#10B981' : '#F59E0B'
+        });
+
+        res.json({ success: true, twoFactorEnabled: newState });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Update notification preferences
+// @route   PUT /api/users/notification-settings
+// @access  Private
+exports.updateNotificationSettings = async (req, res) => {
+    try {
+        const { pushEnabled } = req.body;
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { notificationsEnabled: pushEnabled },
+            { new: true }
+        );
+        res.json({ success: true, notificationsEnabled: user.notificationsEnabled });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -243,6 +243,48 @@ class ApiService {
         });
     }
 
+    async changePassword(data: any) {
+        return this.request('/users/change-password', {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async toggleTwoFactor() {
+        return this.request('/users/two-factor', {
+            method: 'PUT',
+        });
+    }
+
+    async updateNotificationSettings(data: any) {
+        return this.request('/users/notification-settings', {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async getNotifications() {
+        return this.request('/notifications');
+    }
+
+    async markNotificationRead(id: string) {
+        return this.request(`/notifications/${id}/read`, {
+            method: 'PUT',
+        });
+    }
+
+    async markAllNotificationsRead() {
+        return this.request('/notifications/read-all', {
+            method: 'PUT',
+        });
+    }
+
+    async deleteNotification(id: string) {
+        return this.request(`/notifications/${id}`, {
+            method: 'DELETE',
+        });
+    }
+
     // ── GitHub Integration ──────────────────────────────────────────
     /** GET /api/github/profile — check if GitHub is connected */
     async getGitHubProfile() {

@@ -13,6 +13,9 @@ router.use(protect);
 // Profile routes (logged-in user)
 router.put('/profile', userController.updateProfile);
 router.delete('/profile/github', userController.unlinkGitHub);
+router.put('/change-password', userController.changePassword);
+router.put('/two-factor', userController.toggleTwoFactor);
+router.put('/notification-settings', userController.updateNotificationSettings);
 router.post('/avatar', upload.single('avatar'), userController.uploadAvatar);
 router.post('/resume', authorize('student'), upload.single('resume'), userController.uploadResume);
 router.get('/dashboard', userController.getDashboardStats);

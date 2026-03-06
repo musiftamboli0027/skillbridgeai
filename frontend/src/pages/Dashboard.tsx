@@ -70,30 +70,25 @@ export default function Dashboard() {
                 if (enrollRes.success) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const courses = enrollRes.enrollments
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         .filter((e: any) => e.course)
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         .map((e: any) => ({
-                            id: e.course?._id || e.course?.id,
+                            id: (typeof e.course === 'string' ? e.course : (e.course?._id || e.course?.id)) || '',
                             title: e.course?.title || 'Unknown Course',
                             instructor: e.course?.instructor?.name || 'Instructor',
                             progress: e.overallProgress || e.progress || 0,
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             totalLessons: (e.course?.modules || []).reduce(
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 (acc: number, m: any) => acc + (m.lessons?.length || 0), 0
                             ) || (e.course?.weeks || []).reduce(
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 (acc: number, w: any) =>
                                     acc + (w.modules || []).reduce(
-                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                         (mAcc: number, m: any) => mAcc + (m.lessons?.length || 0), 0
                                     ), 0
                             ) || 0,
                             completedLessons: e.completedLessons?.length || 0,
                             category: e.course?.category || 'General',
                             lastAccessed: e.lastAccessed || new Date().toISOString(),
-                        }));
+                        }))
+                        .filter((c: any) => c.id);
                     setEnrolledCourses(courses);
                 }
             } catch (err) {
