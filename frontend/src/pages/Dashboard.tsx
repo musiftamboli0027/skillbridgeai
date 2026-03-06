@@ -376,7 +376,7 @@ export default function Dashboard() {
                                             <tr
                                                 key={course.id}
                                                 className="border-t border-white/5 cursor-pointer hover:bg-white/5 transition-colors"
-                                                onClick={() => navigate(`/course/${course.id}/learn`)}
+                                                onClick={() => navigate(`/learn/${course.id}`)}
                                             >
                                                 <td className="py-3">
                                                     <div className="flex items-center gap-3">
@@ -447,7 +447,7 @@ export default function Dashboard() {
                     </button>
 
                     <button
-                        onClick={() => navigate(enrolledCourses.length > 0 ? `/course/${enrolledCourses[0].id}/learn` : '/courses')}
+                        onClick={() => navigate(enrolledCourses.length > 0 ? `/learn/${enrolledCourses[0].id}` : '/courses')}
                         className="glass-card p-5 flex items-center gap-4 hover:bg-white/5 transition-colors group text-left"
                     >
                         <div className="w-10 h-10 rounded-xl bg-[#7C3AED]/20 flex items-center justify-center group-hover:scale-110 transition-transform">

@@ -17,7 +17,7 @@ export default function CourseCard({ course, index }: CourseCardProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.08, duration: 0.5 }}
-            onClick={() => navigate(course.progress === 100 ? `/certificate/${course.id}` : `/course/${course.id}/learn`)}
+            onClick={() => navigate(course.progress === 100 ? `/certificate/${course.id}` : `/learn/${course.id}`)}
             className="group glass-card rounded-[2rem] border-white/5 overflow-hidden cursor-pointer hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] transition-all duration-500 relative"
         >
             {/* Thumbnail */}
@@ -75,7 +75,7 @@ export default function CourseCard({ course, index }: CourseCardProps) {
                         }`}
                         onClick={(e) => {
                             e.stopPropagation();
-                            navigate(course.progress === 100 ? `/certificate/${course.id}` : `/course/${course.id}/learn`);
+                            navigate(course.progress === 100 ? `/certificate/${course.id}` : `/learn/${course.id}`);
                         }}
                     >
                         {course.progress === 100 ? <Trophy className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}

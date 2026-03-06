@@ -144,7 +144,7 @@ export default function MyCourses() {
                             return (
                                 <div
                                     key={course.id}
-                                    onClick={() => navigate(`/course/${course.id}/learn`)}
+                                    onClick={() => navigate(`/learn/${course.id}`)}
                                     className="glass-card rounded-2xl overflow-hidden cursor-pointer hover:border-white/10 transition-all group"
                                 >
                                     {/* Thumbnail */}
@@ -204,7 +204,7 @@ export default function MyCourses() {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                navigate(`/course/${course.id}/learn`);
+                                                navigate(`/learn/${course.id}`);
                                             }}
                                             className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                                                 course.progress >= 100
