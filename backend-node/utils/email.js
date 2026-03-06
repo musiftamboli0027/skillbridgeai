@@ -17,16 +17,16 @@ const sendEmail = async (options) => {
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
       port: port,
-      secure: port === 465, // true for 465, false for other ports (like 587)
+      secure: port === 465, 
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      // Force IPv4 - Render/Cloud environments often have IPv6 routing issues with Gmail
+      family: 4, 
       tls: {
-        // Allows testing without fully valid certificates, sometimes needed in Render
         rejectUnauthorized: process.env.NODE_ENV === 'production'
       },
-      // Debug info
       debug: process.env.NODE_ENV === 'development',
       logger: process.env.NODE_ENV === 'development'
     });
