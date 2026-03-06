@@ -20,7 +20,7 @@ exports.getUniversities = asyncHandler(async (req, res) => {
 exports.getCollegesByUniversity = asyncHandler(async (req, res) => {
   const { universityId } = req.params;
 
-  const colleges = await College.find({ university: universityId })
+  const colleges = await College.find({ universityId: universityId })
     .sort('name')
     .select('name _id');
 

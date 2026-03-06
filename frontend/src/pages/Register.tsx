@@ -77,7 +77,14 @@ export default function Register() {
   }, [formData.university]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'university') {
+      setFormData({ ...formData, university: value, college: '', universityManual: '', collegeManual: '' });
+    } else if (name === 'college') {
+      setFormData({ ...formData, college: value, collegeManual: '' });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
