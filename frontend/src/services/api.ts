@@ -1,761 +1,420 @@
-import axios, { type AxiosRequestConfig } from 'axios';
+import axios, { type AxiosRequestConfig } from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+/*
+  SkillBridge Frontend API Service
+  Production-ready Axios wrapper that always returns response.data
+*/
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+/* -------------------------------------------------- */
+/* Axios Client */
+/* -------------------------------------------------- */
 
 const client = axios.create({
   baseURL: API_URL,
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
+/* -------------------------------------------------- */
+/* Request Interceptor (Attach JWT Token) */
+/* -------------------------------------------------- */
+
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('skillbridge_token');
+  const token = localStorage.getItem("skillbridge_token");
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
+/* -------------------------------------------------- */
+/* Response Interceptor */
+/* -------------------------------------------------- */
+
 client.interceptors.response.use(
-  (response) => {
-    return response.data;
-  },
+  (response) => response.data,
   (error) => {
     const data = error.response?.data;
     const status = error.response?.status;
+
     if (status === 401) {
-      if (!data?.notVerified && !window.location.hash.includes('/login')) {
-        localStorage.removeItem('skillbridge_token');
-        localStorage.removeItem('skillbridge_user');
-        window.location.href = '/#/login?error=session_expired';
+      localStorage.removeItem("skillbridge_token");
+      localStorage.removeItem("skillbridge_user");
+
+      if (!window.location.hash.includes("/login")) {
+        window.location.href = "/#/login?error=session_expired";
       }
     }
-    return Promise.reject(data || { message: error.message || 'Something went wrong' });
+
+    return Promise.reject(data || { message: "Something went wrong" });
   }
 );
 
-class ApiService {
-    private async request<T = any>(endpoint: string, options: any = {}): Promise<T> {
-        const method = options.method || 'GET';
-        let data = options.body;
-        
-        if (typeof data === 'string') {
-            try {
-                data = JSON.parse(data);
-            } catch (e) {
-                // Ignore
-            }
-        }
-        
-        // Don't override Content-Type if FormData is used
-        let headers: any = {};
-        if (data instanceof FormData) {
-            headers['Content-Type'] = 'multipart/form-data';
-        }
-
-        const config: AxiosRequestConfig = {
-            method,
-            url: endpoint,
-            data,
-            headers: (Object.keys(headers).length > 0) ? headers : undefined,
-        };
-        
-        const response = await client.request(config);
-        return response as unknown as T;
-    }
-    // Auth - Updated for Node.js backend
-    async login(credentials: { email: string; password: string }) {
-        // Node.js backend expects JSON body
-        const data = await this.request('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({
-                email: credentials.email,
-                password: credentials.password
-            }),
-        });
-
-        // Node.js returns {success, token, user}
-        return {
-            success: data.success,
-            token: data.token,
-            user: data.user
-        };
-    }
-
-    async register(userData: any) {
-        return this.request('/auth/register', {
-            method: 'POST',
-            body: JSON.stringify(userData),
-        });
-    }
-
-    async getMe() {
-        return this.request('/auth/me');
-    }
-
-    async verifyEmail(token: string, email: string) {
-        // Node.js backend uses GET with query params
-        return this.request(`/auth/verify-email?token=${token}&email=${email}`);
-    }
-
-    async resendVerification(email: string) {
-        return this.request('/auth/resend-verification', {
-            method: 'POST',
-            body: JSON.stringify({ email }),
-        });
-    }
-
-    async forgotPassword(email: string) {
-        return this.request('/auth/forgot-password', {
-            method: 'POST',
-            body: JSON.stringify({ email }),
-        });
-    }
-
-    async resetPassword(data: { token: string; email: string; password: string }) {
-        return this.request('/auth/reset-password', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
-    }
-
-    // Courses
-    async getCourses(params: string = '') {
-        return this.request(`/courses${params}`);
-    }
-
-    async getCourse(id: string) {
-        return this.request(`/courses/${id}`);
-    }
-
-    async getFeaturedCourses() {
-        return this.request('/courses/featured/list');
-    }
-
-    // Enrollments
-    async enroll(courseId: string) {
-        return this.request('/enrollments', {
-            method: 'POST',
-            body: JSON.stringify({ courseId }),
-        });
-    }
-
-    async getMyEnrollments() {
-        return this.request('/enrollments/my');
-    }
-
-    async updateLessonProgress(enrollmentId: string, progressData: { moduleId: string, lessonId: string, duration?: number }) {
-        return this.request(`/enrollments/${enrollmentId}/progress`, {
-            method: 'PUT',
-            body: JSON.stringify(progressData),
-        });
-    }
-
-
-    async completeLesson(courseId: string, lessonId: string, moduleId: string) {
-        return this.request('/progress/complete', {
-            method: 'POST',
-            body: JSON.stringify({ courseId, lessonId, moduleId }),
-        });
-    }
-
-    async getCourseProgress(courseId: string) {
-        return this.request(`/progress/${courseId}`);
-    }
-
-    // Assignments
-    async getAssignment(id: string) {
-        return this.request(`/assignments/${id}`);
-    }
-
-    async submitCodingAssignment(lessonId: string, submission: { code: string, language: string, courseId: string, moduleId: string }) {
-        return this.request(`/assignments/${lessonId}/submit/coding`, {
-            method: 'POST',
-            body: JSON.stringify(submission),
-        });
-    }
-
-    async submitQuizAssignment(lessonId: string, submission: { answers: Record<number, number>, courseId: string, moduleId: string }) {
-        return this.request(`/assignments/${lessonId}/submit/quiz`, {
-            method: 'POST',
-            body: JSON.stringify(submission),
-        });
-    }
-
-    // Payments
-    async createPaymentOrder(courseId: string) {
-        return this.request('/payments/create-order', {
-            method: 'POST',
-            body: JSON.stringify({ courseId }),
-        });
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async verifyPayment(paymentData: any) {
-        return this.request('/payments/verify', {
-            method: 'POST',
-            body: JSON.stringify(paymentData),
-        });
-    }
-
-    // Admin - Courses
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async createCourse(courseData: any) {
-        return this.request('/courses', {
-            method: 'POST',
-            body: JSON.stringify(courseData),
-        });
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async updateCourse(id: string, courseData: any) {
-        return this.request(`/courses/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(courseData),
-        });
-    }
-
-    async deleteCourse(id: string) {
-        return this.request(`/courses/${id}`, {
-            method: 'DELETE',
-        });
-    }
-
-    // Admin - Students
-    async getStudents() {
-        return this.request('/users/students');
-    }
-
-    // Admin - Stats & Analytics
-    async getAdminStats() {
-        const [enrollmentStats, paymentAnalytics] = await Promise.all([
-            this.request('/enrollments/stats'),
-            this.request('/payments/analytics')
-        ]);
-        return {
-            enrollment: enrollmentStats.stats,
-            payment: paymentAnalytics.data
-        };
-    }
-
-    async getAllEnrollments() {
-        return this.request('/enrollments');
-    }
-
-    async getAllPayments() {
-        return this.request('/payments');
-    }
-
-    // User Profile & Stats
-    async getDashboardStats() {
-        return this.request('/users/dashboard');
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async updateProfile(profileData: any) {
-        return this.request('/users/profile', {
-            method: 'PUT',
-            body: JSON.stringify(profileData),
-        });
-    }
-
-    async changePassword(data: any) {
-        return this.request('/users/change-password', {
-            method: 'PUT',
-            body: JSON.stringify(data),
-        });
-    }
-
-    async toggleTwoFactor() {
-        return this.request('/users/two-factor', {
-            method: 'PUT',
-        });
-    }
-
-    async updateNotificationSettings(data: any) {
-        return this.request('/users/notification-settings', {
-            method: 'PUT',
-            body: JSON.stringify(data),
-        });
-    }
-
-    async getNotifications() {
-        return this.request('/notifications');
-    }
-
-    async markNotificationRead(id: string) {
-        return this.request(`/notifications/${id}/read`, {
-            method: 'PUT',
-        });
-    }
-
-    async markAllNotificationsRead() {
-        return this.request('/notifications/read-all', {
-            method: 'PUT',
-        });
-    }
-
-    async deleteNotification(id: string) {
-        return this.request(`/notifications/${id}`, {
-            method: 'DELETE',
-        });
-    }
-
-    // ΓöÇΓöÇ GitHub Integration ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    /** GET /api/github/profile ΓÇö check if GitHub is connected */
-    async getGitHubProfile() {
-        return this.request('/github/profile');
-    }
-
-    /** GET /api/github/auth-url ΓÇö get OAuth URL to redirect user to GitHub */
-    async getGitHubAuthUrl() {
-        return this.request('/github/auth-url');
-    }
-
-    /** POST /api/github/save-code ΓÇö push code file to skillbridge-portfolio */
-    async saveCodeToGitHub(data: {
-        filename: string;
-        folder: string;
-        code: string;
-        commitMessage?: string;
-        language?: string;
-    }) {
-        return this.request('/github/save-code', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
-    }
-
-    /** POST /api/github/disconnect ΓÇö unlink GitHub */
-    async disconnectGitHub() {
-        return this.request('/github/disconnect', { method: 'POST' });
-    }
-
-    /** GET /api/github/commit-history */
-    async getGitHubCommitHistory() {
-        return this.request('/github/commit-history');
-    }
-
-    /** GET /api/github/repos */
-    async getGitHubRepos() {
-        return this.request('/github/repos');
-    }
-
-    /** GET /api/github/activity */
-    async getGitHubActivity() {
-        return this.request('/github/activity');
-    }
-
-    async getAIDebugFeedback(data: { code: string, language: string, problemStatement: string, lessonTitle: string }) {
-        return this.request('/ai/debug', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
-    }
-
-    async getAITutorChat(data: {
-        message: string;
-        conversationHistory?: { role: string; content: string }[];
-        lessonTitle?: string;
-        moduleTitle?: string;
-        weekTitle?: string;
-        courseTitle?: string;
-        code?: string;
-    }) {
-        return this.request('/ai/chat', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
-    }
-
-    /**
-     * POST /api/ai/tutor ΓÇö Lyzr Agent-powered AI Tutor
-     * The API key is stored server-side only; never exposed to the browser.
-     */
-    async getAITutorLyzr(data: {
-        message: string;
-        sessionId?: string;
-    }): Promise<{ success: boolean; reply?: string; source?: string; message?: string }> {
-        return this.request('/ai/tutor', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
-    }
-
-    async approveCourse(id: string) {
-        return this.request(`/courses/${id}/approve`, {
-            method: 'PATCH'
-        });
-    }
-
-    async rejectCourse(id: string, reason: string) {
-        return this.request(`/courses/${id}/reject`, {
-            method: 'PATCH',
-            body: JSON.stringify({ reason })
-        });
-    }
-
-    // SaaS
-    async getUniversities() {
-        return this.request('/saas/universities');
-    }
-
-    async getColleges(universityId: string) {
-        return this.request(`/saas/colleges/${universityId}`);
-    }
-
-
-    // Career & Skill Tracker
-    async getCareerPaths() {
-        return this.request('/career/paths');
-    }
-
-    async getSkillTracker() {
-        return this.request('/career/tracker');
-    }
-
-    async selectCareerPath(careerPathId: string) {
-        return this.request('/career/select', {
-            method: 'POST',
-            body: JSON.stringify({ careerPathId })
-        });
-    }
-
-    async updateCareerProgress(progressData: any) {
-        return this.request('/career/progress', {
-            method: 'PUT',
-            body: JSON.stringify(progressData)
-        });
-    }
-    // Communication Skill Builder
-    async getCommunicationSessions() {
-        return this.request('/communication/sessions');
-    }
-
-    async getResumeTips() {
-        return this.request('/communication/resume-tips');
-    }
-
-    // Internship & Community Hub
-    async getInternships() {
-        return this.request('/hub/internships');
-    }
-
-    async applyForInternship(id: string) {
-        return this.request(`/hub/internships/${id}/apply`, { method: 'POST' });
-    }
-
-    async getGroups() {
-        return this.request('/hub/groups');
-    }
-
-    async createGroup(data: any) {
-        return this.request('/hub/groups', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async getHubProjects() {
-        return this.request('/hub/projects');
-    }
-
-    async createHubProject(data: any) {
-        return this.request('/hub/projects', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // Placement System (4th Year)
-    async getPlacementStats() {
-        return this.request('/placement/dashboard');
-    }
-
-    async getAptitudeTests() {
-        return this.request('/placement/tests');
-    }
-
-    async submitAptitudeResult(testId: string, data: any) {
-        return this.request(`/placement/tests/${testId}/submit`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async submitInterviewSession(data: any) {
-        return this.request('/placement/interviews', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // ΓöÇΓöÇ Collaboration Module ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    async getCollabDashboard() {
-        return this.request('/collaboration/dashboard');
-    }
-
-    async getCollabProjects(params: string = '') {
-        return this.request(`/collaboration/projects${params}`);
-    }
-
-    async getCollabProject(id: string) {
-        return this.request(`/collaboration/projects/${id}`);
-    }
-
-    async createCollabProject(data: any) {
-        return this.request('/collaboration/projects', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async updateProjectStatus(id: string, data: { status: string; rejectionReason?: string }) {
-        return this.request(`/collaboration/projects/${id}/status`, {
-            method: 'PATCH',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async addMentorFeedback(id: string, data: { comment: string; score: number }) {
-        return this.request(`/collaboration/projects/${id}/feedback`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async calculateProjectScore(id: string) {
-        return this.request(`/collaboration/projects/${id}/score`, { method: 'POST' });
-    }
-
-    async createTeam(data: { name: string; projectId: string }) {
-        return this.request('/collaboration/teams', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async getMyTeam() {
-        return this.request('/collaboration/teams/my');
-    }
-
-    async getCollabTeam(id: string) {
-        return this.request(`/collaboration/teams/${id}`);
-    }
-
-    async requestJoinTeam(teamId: string, data: { domain: string; role: string; message: string }) {
-        return this.request(`/collaboration/teams/${teamId}/join`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async approveMember(teamId: string, data: { requestId: string; approved: boolean }) {
-        return this.request(`/collaboration/teams/${teamId}/approve-member`, {
-            method: 'PATCH',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async activateTeam(teamId: string) {
-        return this.request(`/collaboration/teams/${teamId}/activate`, { method: 'PATCH' });
-    }
-
-    async createSprint(data: any) {
-        return this.request('/collaboration/sprints', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async getSprints(teamId: string) {
-        return this.request(`/collaboration/sprints/${teamId}`);
-    }
-
-    async addSprintTask(sprintId: string, data: any) {
-        return this.request(`/collaboration/sprints/${sprintId}/tasks`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async updateSprintTask(sprintId: string, taskId: string, data: { status: string }) {
-        return this.request(`/collaboration/sprints/${sprintId}/tasks/${taskId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async completeSprint(sprintId: string) {
-        return this.request(`/collaboration/sprints/${sprintId}/complete`, { method: 'PATCH' });
-    }
-
-    async getContributions(teamId: string) {
-        return this.request(`/collaboration/contributions/${teamId}`);
-    }
-
-    async getMyCollabAnalytics() {
-        return this.request('/collaboration/analytics/my');
-    }
-
-    async getCollabLeaderboard() {
-        return this.request('/collaboration/leaderboard');
-    }
-
-    // ΓöÇΓöÇ Community Module ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    async getCommunityPublicFeed(params: string = '') {
-        return this.request(`/community/public${params}`);
-    }
-
-    async getCommunityLeaderboard(domain?: string) {
-        return this.request(`/community/leaderboard${domain ? `?domain=${domain}` : ''}`);
-    }
-
-    async getCommunityFeed(params: string = '') {
-        return this.request(`/community/feed${params}`);
-    }
-
-    async getCommunityStats() {
-        return this.request('/community/stats');
-    }
-
-    async getMyPosts() {
-        return this.request('/community/my-posts');
-    }
-
-    async createCommunityPost(data: any) {
-        return this.request('/community/create', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async togglePostLike(postId: string) {
-        return this.request(`/community/like/${postId}`, { method: 'POST' });
-    }
-
-    async togglePostSave(postId: string) {
-        return this.request(`/community/save/${postId}`, { method: 'POST' });
-    }
-
-    async addPostComment(postId: string, content: string) {
-        return this.request(`/community/comment/${postId}`, {
-            method: 'POST',
-            body: JSON.stringify({ content })
-        });
-    }
-
-    async getPostComments(postId: string) {
-        return this.request(`/community/comments/${postId}`);
-    }
-
-    async upvoteComment(commentId: string) {
-        return this.request(`/community/comment/${commentId}/upvote`, { method: 'POST' });
-    }
-
-    async acceptAnswer(commentId: string) {
-        return this.request(`/community/accept-answer/${commentId}`, { method: 'PATCH' });
-    }
-
-    async reportPost(postId: string, reason: string) {
-        return this.request('/community/report', {
-            method: 'POST',
-            body: JSON.stringify({ postId, reason })
-        });
-    }
-
-    async deleteCommunityPost(postId: string) {
-        return this.request(`/community/${postId}`, { method: 'DELETE' });
-    }
-
-    // ΓöÇΓöÇ AI Career Roadmap ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    async generateRoadmap(data: { career: string; level: string; skills: string[]; hours: string; budget: string; goal: string }) {
-        return this.request('/ai/roadmap/generate', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    async getSavedRoadmap() {
-        return this.request('/ai/roadmap');
-    }
-
-    // ΓöÇΓöÇ Skill Tracker ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    async getSkillAnalytics() {
-        return this.request('/career/analytics');
-    }
-
-    async updateUserSkills(data: { primaryDomain?: string; secondarySkills?: string[]; domainLevel?: string }) {
-        return this.request('/career/skills', {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
-    }
-    // ΓöÇΓöÇ Jobs & Hiring ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    async getPublicJobs(params?: { domain?: string; type?: string; level?: string; page?: number }) {
-        const q = new URLSearchParams();
-        if (params?.domain) q.set('domain', params.domain);
-        if (params?.type) q.set('type', params.type);
-        if (params?.level) q.set('level', params.level);
-        if (params?.page) q.set('page', String(params.page));
-        return this.request(`/jobs/public?${q.toString()}`);
-    }
-
-    async getJobDetail(id: string) {
-        return this.request(`/jobs/detail/${id}`);
-    }
-
-    async browseJobs(params?: { domain?: string; type?: string; level?: string; search?: string; page?: number }) {
-        const q = new URLSearchParams();
-        if (params?.domain) q.set('domain', params.domain);
-        if (params?.type) q.set('type', params.type);
-        if (params?.level) q.set('level', params.level);
-        if (params?.search) q.set('search', params.search);
-        if (params?.page) q.set('page', String(params.page));
-        return this.request(`/jobs/browse?${q.toString()}`);
-    }
-
-    async applyToJob(jobId: string, data: { resumeLink?: string; portfolioLink?: string; githubLink?: string; coverLetter?: string }) {
-        return this.request(`/jobs/apply/${jobId}`, { method: 'POST', body: JSON.stringify(data) });
-    }
-
-    async getMyApplications() {
-        return this.request('/jobs/my-applications');
-    }
-
-    async createJob(data: Record<string, unknown>) {
-        return this.request('/jobs/create', { method: 'POST', body: JSON.stringify(data) });
-    }
-
-    async getRecruiterJobs() {
-        return this.request('/jobs/recruiter');
-    }
-
-    async getJobApplicants(jobId: string, sort?: string) {
-        return this.request(`/jobs/applicants/${jobId}?sort=${sort || 'newest'}`);
-    }
-
-    async updateApplicationStatus(applicationId: string, data: { status: string; feedback?: string }) {
-        return this.request(`/jobs/application-status/${applicationId}`, { method: 'PATCH', body: JSON.stringify(data) });
-    }
-
-    async updateJobStatus(jobId: string, status: string) {
-        return this.request(`/jobs/status/${jobId}`, { method: 'PATCH', body: JSON.stringify({ status }) });
-    }
-
-    // ΓöÇΓöÇ Admin Recruiter Management ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    async getAdminRecruiters() {
-        return this.request('/jobs/admin/recruiters');
-    }
-
-    async verifyRecruiter(userId: string, action: 'approve' | 'reject') {
-        return this.request(`/jobs/verify-recruiter/${userId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ action })
-        });
-    }
-}
-
-export const api = new ApiService();
+/* -------------------------------------------------- */
+/* Generic API Wrapper */
+/* -------------------------------------------------- */
+
+const request = {
+  get: async <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
+    client.get(url, config) as unknown as Promise<T>,
+
+  post: async <T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> => client.post(url, data, config) as unknown as Promise<T>,
+
+  put: async <T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> => client.put(url, data, config) as unknown as Promise<T>,
+
+  patch: async <T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> => client.patch(url, data, config) as unknown as Promise<T>,
+
+  delete: async <T = any>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<T> => client.delete(url, config) as unknown as Promise<T>,
+};
+
+/* -------------------------------------------------- */
+/* SkillBridge API Endpoints */
+/* -------------------------------------------------- */
+
+export const api = {
+  /* ---------- Universities ---------- */
+
+  getUniversities: () => request.get("/api/universities"),
+  getColleges: (universityId: string) =>
+    request.get(`/api/colleges/${universityId}`),
+
+  /* ---------- Auth ---------- */
+
+  login: (credentials: any) => request.post("/api/auth/login", credentials),
+  register: (data: any) => request.post("/api/auth/register", data),
+  getMe: () => request.get("/api/auth/me"),
+  verifyEmail: (token: string, email: string) =>
+    request.get(`/api/auth/verify-email?token=${token}&email=${email}`),
+
+  resendVerification: (email: string) =>
+    request.post("/api/auth/resend-verification", { email }),
+
+  forgotPassword: (email: string) =>
+    request.post("/api/auth/forgot-password", { email }),
+
+  resetPassword: (data: any) =>
+    request.post("/api/auth/reset-password", data),
+
+  /* ---------- Courses ---------- */
+
+  getCourses: (params = "") => request.get(`/api/courses${params}`),
+  getCourse: (id: string) => request.get(`/api/courses/${id}`),
+  getFeaturedCourses: () => request.get("/api/courses/featured/list"),
+
+  approveCourse: (id: string) => request.patch(`/api/courses/${id}/approve`),
+  rejectCourse: (id: string, reason: string) => 
+    request.patch(`/api/courses/${id}/reject`, { reason }),
+
+  createCourse: (courseData: any) => request.post("/api/courses", courseData),
+  updateCourse: (id: string, courseData: any) => request.put(`/api/courses/${id}`, courseData),
+  deleteCourse: (id: string) => request.delete(`/api/courses/${id}`),
+
+  /* ---------- Enrollments ---------- */
+
+  enroll: (courseId: string) =>
+    request.post("/api/enrollments", { courseId }),
+
+  getMyEnrollments: () => request.get("/api/enrollments/my"),
+  
+  getAllEnrollments: () => request.get("/api/enrollments"),
+
+  updateLessonProgress: (enrollmentId: string, progressData: any) =>
+    request.put(`/api/enrollments/${enrollmentId}/progress`, progressData),
+
+  /* ---------- Progress ---------- */
+
+  completeLesson: (courseId: string, lessonId: string, moduleId: string) =>
+    request.post("/api/progress/complete", { courseId, lessonId, moduleId }),
+
+  getCourseProgress: (courseId: string) => request.get(`/api/progress/${courseId}`),
+
+  /* ---------- Assignments ---------- */
+
+  getAssignment: (id: string) => request.get(`/api/assignments/${id}`),
+  
+  submitCodingAssignment: (lessonId: string, submission: any) =>
+    request.post(`/api/assignments/${lessonId}/submit/coding`, submission),
+
+  submitQuizAssignment: (lessonId: string, submission: any) =>
+    request.post(`/api/assignments/${lessonId}/submit/quiz`, submission),
+
+  /* ---------- Payments ---------- */
+
+  createPaymentOrder: (courseId: string) =>
+    request.post("/api/payments/create-order", { courseId }),
+
+  verifyPayment: (paymentData: any) =>
+    request.post("/api/payments/verify", paymentData),
+    
+  getAllPayments: () => request.get("/api/payments"),
+
+  /* ---------- Users & Stats ---------- */
+
+  getStudents: () => request.get("/api/users/students"),
+  
+  getAdminStats: async () => {
+    const [enrollmentStats, paymentAnalytics]: [any, any] = await Promise.all([
+      request.get("/api/enrollments/stats"),
+      request.get("/api/payments/analytics")
+    ]);
+    return {
+      enrollment: enrollmentStats.stats,
+      payment: paymentAnalytics.data
+    };
+  },
+
+  getDashboardStats: () => request.get("/api/users/dashboard"),
+  
+  updateProfile: (profileData: any) => request.put("/api/users/profile", profileData),
+  
+  changePassword: (data: any) => request.put("/api/users/change-password", data),
+  
+  toggleTwoFactor: () => request.put("/api/users/two-factor"),
+  
+  updateNotificationSettings: (data: any) => request.put("/api/users/notification-settings", data),
+
+  /* ---------- Notifications ---------- */
+
+  getNotifications: () => request.get("/api/notifications"),
+  
+  markNotificationRead: (id: string) => request.put(`/api/notifications/${id}/read`),
+  
+  markAllNotificationsRead: () => request.put("/api/notifications/read-all"),
+  
+  deleteNotification: (id: string) => request.delete(`/api/notifications/${id}`),
+
+  /* ---------- GitHub ---------- */
+
+  getGitHubProfile: () => request.get("/api/github/profile"),
+  
+  getGitHubAuthUrl: () => request.get("/api/github/auth-url"),
+  
+  saveCodeToGitHub: (data: any) => request.post("/api/github/save-code", data),
+  
+  disconnectGitHub: () => request.post("/api/github/disconnect"),
+  
+  getGitHubCommitHistory: () => request.get("/api/github/commit-history"),
+  
+  getGitHubRepos: () => request.get("/api/github/repos"),
+  
+  getGitHubActivity: () => request.get("/api/github/activity"),
+
+  /* ---------- AI ---------- */
+
+  getAIDebugFeedback: (data: any) =>
+    request.post("/api/ai/debug", data),
+
+  getAITutorChat: (data: any) =>
+    request.post("/api/ai/chat", data),
+
+  getAITutorLyzr: (data: any) =>
+    request.post("/api/ai/tutor", data),
+
+  generateRoadmap: (data: any) =>
+    request.post("/api/ai/roadmap/generate", data),
+
+  getSavedRoadmap: () =>
+    request.get("/api/ai/roadmap"),
+
+  /* ---------- Career & Skills ---------- */
+
+  getCareerPaths: () => request.get("/api/career/paths"),
+  
+  getSkillTracker: () => request.get("/api/career/tracker"),
+  
+  selectCareerPath: (careerPathId: string) =>
+    request.post("/api/career/select", { careerPathId }),
+    
+  updateCareerProgress: (progressData: any) =>
+    request.put("/api/career/progress", progressData),
+    
+  getSkillAnalytics: () => request.get("/api/career/analytics"),
+  
+  updateUserSkills: (data: any) => request.put("/api/career/skills", data),
+
+  /* ---------- Communication ---------- */
+
+  getCommunicationSessions: () => request.get("/api/communication/sessions"),
+  
+  getResumeTips: () => request.get("/api/communication/resume-tips"),
+
+  /* ---------- Hub & Internships ---------- */
+
+  getInternships: () => request.get("/api/hub/internships"),
+  
+  applyForInternship: (id: string) => request.post(`/api/hub/internships/${id}/apply`),
+  
+  getGroups: () => request.get("/api/hub/groups"),
+  
+  createGroup: (data: any) => request.post("/api/hub/groups", data),
+  
+  getHubProjects: () => request.get("/api/hub/projects"),
+  
+  createHubProject: (data: any) => request.post("/api/hub/projects", data),
+
+  /* ---------- Placement ---------- */
+
+  getPlacementStats: () => request.get("/api/placement/dashboard"),
+  
+  getAptitudeTests: () => request.get("/api/placement/tests"),
+  
+  submitAptitudeResult: (testId: string, data: any) =>
+    request.post(`/api/placement/tests/${testId}/submit`, data),
+    
+  submitInterviewSession: (data: any) =>
+    request.post("/api/placement/interviews", data),
+
+  /* ---------- Collaboration ---------- */
+
+  getCollabDashboard: () => request.get("/api/collaboration/dashboard"),
+  
+  getCollabProjects: (params = "") => request.get(`/api/collaboration/projects${params}`),
+  
+  getCollabProject: (id: string) => request.get(`/api/collaboration/projects/${id}`),
+  
+  createCollabProject: (data: any) => request.post("/api/collaboration/projects", data),
+  
+  updateProjectStatus: (id: string, data: any) =>
+    request.patch(`/api/collaboration/projects/${id}/status`, data),
+    
+  addMentorFeedback: (id: string, data: any) =>
+    request.post(`/api/collaboration/projects/${id}/feedback`, data),
+    
+  calculateProjectScore: (id: string) => request.post(`/api/collaboration/projects/${id}/score`),
+  
+  createTeam: (data: any) => request.post("/api/collaboration/teams", data),
+  
+  getMyTeam: () => request.get("/api/collaboration/teams/my"),
+  
+  getCollabTeam: (id: string) => request.get(`/api/collaboration/teams/${id}`),
+  
+  requestJoinTeam: (teamId: string, data: any) =>
+    request.post(`/api/collaboration/teams/${teamId}/join`, data),
+    
+  approveMember: (teamId: string, data: any) =>
+    request.patch(`/api/collaboration/teams/${teamId}/approve-member`, data),
+    
+  activateTeam: (teamId: string) => request.patch(`/api/collaboration/teams/${teamId}/activate`),
+  
+  createSprint: (data: any) => request.post("/api/collaboration/sprints", data),
+  
+  getSprints: (teamId: string) => request.get(`/api/collaboration/sprints/${teamId}`),
+  
+  addSprintTask: (sprintId: string, data: any) =>
+    request.post(`/api/collaboration/sprints/${sprintId}/tasks`, data),
+    
+  updateSprintTask: (sprintId: string, taskId: string, data: any) =>
+    request.patch(`/api/collaboration/sprints/${sprintId}/tasks/${taskId}`, data),
+    
+  completeSprint: (sprintId: string) => request.patch(`/api/collaboration/sprints/${sprintId}/complete`),
+  
+  getContributions: (teamId: string) => request.get(`/api/collaboration/contributions/${teamId}`),
+  
+  getMyCollabAnalytics: () => request.get("/api/collaboration/analytics/my"),
+  
+  getCollabLeaderboard: () => request.get("/api/collaboration/leaderboard"),
+
+  /* ---------- Community ---------- */
+
+  getCommunityPublicFeed: (params = "") => request.get(`/api/community/public${params}`),
+  
+  getCommunityLeaderboard: (domain?: string) =>
+    request.get(`/api/community/leaderboard${domain ? `?domain=${domain}` : ""}`),
+    
+  getCommunityFeed: (params = "") => request.get(`/api/community/feed${params}`),
+  
+  getCommunityStats: () => request.get("/api/community/stats"),
+  
+  getMyPosts: () => request.get("/api/community/my-posts"),
+  
+  createCommunityPost: (data: any) => request.post("/api/community/create", data),
+  
+  togglePostLike: (postId: string) => request.post(`/api/community/like/${postId}`),
+  
+  togglePostSave: (postId: string) => request.post(`/api/community/save/${postId}`),
+  
+  addPostComment: (postId: string, content: string) =>
+    request.post(`/api/community/comment/${postId}`, { content }),
+    
+  getPostComments: (postId: string) => request.get(`/api/community/comments/${postId}`),
+  
+  upvoteComment: (commentId: string) => request.post(`/api/community/comment/${commentId}/upvote`),
+  
+  acceptAnswer: (commentId: string) => request.patch(`/api/community/accept-answer/${commentId}`),
+  
+  reportPost: (postId: string, reason: string) =>
+    request.post("/api/community/report", { postId, reason }),
+    
+  deleteCommunityPost: (postId: string) => request.delete(`/api/community/${postId}`),
+
+  /* ---------- Jobs & Hiring ---------- */
+
+  getPublicJobs: (params?: any) => {
+    const q = new URLSearchParams();
+    if (params?.domain) q.set("domain", params.domain);
+    if (params?.type) q.set("type", params.type);
+    if (params?.level) q.set("level", params.level);
+    if (params?.page) q.set("page", String(params.page));
+    return request.get(`/api/jobs/public?${q.toString()}`);
+  },
+
+  getJobDetail: (id: string) => request.get(`/api/jobs/detail/${id}`),
+  
+  browseJobs: (params?: any) => {
+    const q = new URLSearchParams();
+    if (params?.domain) q.set("domain", params.domain);
+    if (params?.type) q.set("type", params.type);
+    if (params?.level) q.set("level", params.level);
+    if (params?.search) q.set("search", params.search);
+    if (params?.page) q.set("page", String(params.page));
+    return request.get(`/api/jobs/browse?${q.toString()}`);
+  },
+
+  applyToJob: (jobId: string, data: any) =>
+    request.post(`/api/jobs/apply/${jobId}`, data),
+    
+  getMyApplications: () => request.get("/api/jobs/my-applications"),
+  
+  createJob: (data: any) => request.post("/api/jobs/create", data),
+  
+  getRecruiterJobs: () => request.get("/api/jobs/recruiter"),
+  
+  getJobApplicants: (jobId: string, sort?: string) =>
+    request.get(`/api/jobs/applicants/${jobId}?sort=${sort || "newest"}`),
+    
+  updateApplicationStatus: (applicationId: string, data: any) =>
+    request.patch(`/api/jobs/application-status/${applicationId}`, data),
+    
+  updateJobStatus: (jobId: string, status: string) =>
+    request.patch(`/api/jobs/status/${jobId}`, { status }),
+
+  /* ---------- Admin Recruiter Mgt ---------- */
+
+  getAdminRecruiters: () => request.get("/api/jobs/admin/recruiters"),
+  
+  verifyRecruiter: (userId: string, action: string) =>
+    request.patch(`/api/jobs/verify-recruiter/${userId}`, { action }),
+};
+
+export default api;
