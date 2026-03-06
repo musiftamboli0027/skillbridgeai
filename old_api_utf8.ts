@@ -1,70 +1,53 @@
-import axios, { type AxiosRequestConfig } from 'axios';
-
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-const client = axios.create({
-  baseURL: API_URL,
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('skillbridge_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-client.interceptors.response.use(
-  (response) => {
-    return response.data;
-  },
-  (error) => {
-    const data = error.response?.data;
-    const status = error.response?.status;
-    if (status === 401) {
-      if (!data?.notVerified && !window.location.hash.includes('/login')) {
-        localStorage.removeItem('skillbridge_token');
-        localStorage.removeItem('skillbridge_user');
-        window.location.href = '/#/login?error=session_expired';
-      }
-    }
-    return Promise.reject(data || { message: error.message || 'Something went wrong' });
-  }
-);
-
 class ApiService {
-    private async request<T = any>(endpoint: string, options: any = {}): Promise<T> {
-        const method = options.method || 'GET';
-        let data = options.body;
-        
-        if (typeof data === 'string') {
-            try {
-                data = JSON.parse(data);
-            } catch (e) {
-                // Ignore
+    private async request(endpoint: string, options: RequestInit = {}) {
+        const token = localStorage.getItem('skillbridge_token');
+
+        const headers: Record<string, string> = {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            ...((options.headers as Record<string, string>) || {}),
+        };
+
+        // Don't set Content-Type for FormData (browser does it automatically with boundary)
+        if (!(options.body instanceof FormData)) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers,
+            credentials: 'include', // Ensure cookies/auth headers are sent cross-origin
+        });
+
+        const data = await response.json();
+
+        if (response.status === 401) {
+            // Check if this is a "not verified" response - don't clear tokens for this
+            if (data.notVerified) {
+                throw new Error(data.message || 'Account not verified');
+            }
+
+            localStorage.removeItem('skillbridge_token');
+            localStorage.removeItem('skillbridge_user');
+
+            // Only redirect if we're not already trying to login
+            const isLoginPath = window.location.hash.includes('/login');
+            if (!isLoginPath) {
+                window.location.href = '/#/login?error=Session expired';
+                // Force a reload to clear all React state if needed
+                window.location.reload();
             }
         }
-        
-        // Don't override Content-Type if FormData is used
-        let headers: any = {};
-        if (data instanceof FormData) {
-            headers['Content-Type'] = 'multipart/form-data';
+
+        if (!response.ok) {
+            throw new Error(data.detail || data.message || 'Something went wrong');
         }
 
-        const config: AxiosRequestConfig = {
-            method,
-            url: endpoint,
-            data,
-            headers: (Object.keys(headers).length > 0) ? headers : undefined,
-        };
-        
-        const response = await client.request(config);
-        return response as unknown as T;
+        return data;
     }
+
     // Auth - Updated for Node.js backend
     async login(credentials: { email: string; password: string }) {
         // Node.js backend expects JSON body
