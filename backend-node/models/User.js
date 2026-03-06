@@ -202,6 +202,11 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.index({ collegeId: 1, year: 1, role: 1 });
+userSchema.index({ email: 1 });
+userSchema.index({ username: 1 });
+userSchema.index({ githubId: 1 });
+userSchema.index({ universityId: 1 });
+userSchema.index({ 'enrolledCourses.course': 1 }); // Optimize checking if user is enrolled in a specific course
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

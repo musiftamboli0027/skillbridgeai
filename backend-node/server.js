@@ -71,8 +71,7 @@ app.use(cookieParser());
 // before helmet's cross-origin policies can reject them.
 // ──────────────────────────────────────────────────────────
 const allowedOrigins = [
-    'https://skillbridgeai-1.onrender.com',
-    'https://skillbridgeai.onrender.com',
+    'https://skillbridgai.netlify.app',
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3000',
@@ -156,7 +155,7 @@ app.use('/api/payments', payments);
 app.use('/api/github', github);
 app.use('/api/assignments', assignments);
 app.use('/api/progress', require('./routes/progressRoutes'));
-app.use('/api/ai', ai);
+app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/certificates', require('./routes/certificateRoutes'));
 app.use('/api/saas', require('./routes/saasRoutes'));
 app.use('/api/career', require('./routes/careerRoutes'));

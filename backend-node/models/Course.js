@@ -165,7 +165,17 @@ const courseSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
+}, {
+  timestamps: true
 });
+
+// Indices for performance
+courseSchema.index({ category: 1, isPublished: 1 });
+courseSchema.index({ level: 1, isPublished: 1 });
+courseSchema.index({ instructor: 1 });
+courseSchema.index({ isPublished: 1, isFeatured: 1 });
+courseSchema.index({ slug: 1 }, { unique: true });
+courseSchema.index({ title: 'text', description: 'text', tags: 'text' });
 
 // Middleware to create slug from title
 courseSchema.pre('save', function (next) {

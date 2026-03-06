@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -6,46 +7,54 @@ import { MainLayout } from './components/MainLayout';
 
 
 // Pages
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import RecruiterLogin from './pages/RecruiterLogin';
-import RecruiterRegister from './pages/RecruiterRegister';
-import Courses from './pages/Courses';
-import CourseDetail from './pages/CourseDetail';
-import AdminDashboard from './pages/AdminDashboard';
-import Contact from './pages/Contact';
-import VerifyEmail from './pages/VerifyEmail';
-import LearningInterface from './pages/LearningInterface';
-import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
-import MyCourses from './pages/MyCourses';
-import Settings from './pages/Settings';
-import About from './pages/About';
-import LifeAtSkillBridge from './pages/LifeAtSkillBridge';
-import Career from './pages/Career';
-import CareerRoadmap from './pages/CareerRoadmap';
-import SkillTracker from './pages/SkillTracker';
-import GitHubSync from './pages/GitHubSync';
-import AITutor from './pages/AITutor';
-import PracticeLab from './pages/PracticeLab';
-import CommunicationBuilder from './pages/CommunicationBuilder';
-import InternshipHub from './pages/InternshipHub';
-import CollaborativeHub from './pages/CollaborativeHub';
-import CollaborationDashboard from './pages/CollaborationDashboard';
-import CommunityPublic from './pages/CommunityPublic';
-import CommunityDashboard from './pages/CommunityDashboard';
-import PlacementDashboard from './pages/PlacementDashboard';
-import Blogs from './pages/Blogs';
-import Certificate from './pages/Certificate';
-import VerifyCertificate from './pages/VerifyCertificate';
-import PracticeLayout from './pages/LogicPractice/PracticeLayout';
-import Opportunities from './pages/Opportunities';
-import OpportunitiesPublic from './pages/OpportunitiesPublic';
-import RecruiterDashboard from './pages/RecruiterDashboard';
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const RecruiterLogin = lazy(() => import('./pages/RecruiterLogin'));
+const RecruiterRegister = lazy(() => import('./pages/RecruiterRegister'));
+const Courses = lazy(() => import('./pages/Courses'));
+const CourseDetail = lazy(() => import('./pages/CourseDetail'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const Contact = lazy(() => import('./pages/Contact'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const LearningInterface = lazy(() => import('./pages/LearningInterface'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+const MyCourses = lazy(() => import('./pages/MyCourses'));
+const Settings = lazy(() => import('./pages/Settings'));
+const About = lazy(() => import('./pages/About'));
+const LifeAtSkillBridge = lazy(() => import('./pages/LifeAtSkillBridge'));
+const Career = lazy(() => import('./pages/Career'));
+const CareerRoadmap = lazy(() => import('./pages/CareerRoadmap'));
+const SkillTracker = lazy(() => import('./pages/SkillTracker'));
+const GitHubSync = lazy(() => import('./pages/GitHubSync'));
+const AITutor = lazy(() => import('./pages/AITutor'));
+const PracticeLab = lazy(() => import('./pages/PracticeLab'));
+const CommunicationBuilder = lazy(() => import('./pages/CommunicationBuilder'));
+const InternshipHub = lazy(() => import('./pages/InternshipHub'));
+const CollaborativeHub = lazy(() => import('./pages/CollaborativeHub'));
+const CollaborationDashboard = lazy(() => import('./pages/CollaborationDashboard'));
+const CommunityPublic = lazy(() => import('./pages/CommunityPublic'));
+const CommunityDashboard = lazy(() => import('./pages/CommunityDashboard'));
+const PlacementDashboard = lazy(() => import('./pages/PlacementDashboard'));
+const Blogs = lazy(() => import('./pages/Blogs'));
+const Certificate = lazy(() => import('./pages/Certificate'));
+const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'));
+const PracticeLayout = lazy(() => import('./pages/LogicPractice/PracticeLayout'));
+const Opportunities = lazy(() => import('./pages/Opportunities'));
+const OpportunitiesPublic = lazy(() => import('./pages/OpportunitiesPublic'));
+const RecruiterDashboard = lazy(() => import('./pages/RecruiterDashboard'));
 
+// Loader component for suspense
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+    <div className="w-12 h-12 border-4 border-[#2563EB]/20 border-t-[#2563EB] rounded-full animate-spin"></div>
+  </div>
+);
+
+// Sonner
 import { Toaster } from 'sonner';
 
 function App() {
@@ -53,8 +62,9 @@ function App() {
     <AuthProvider>
       <Toaster position="top-center" richColors />
       <Router>
-        <Routes>
-          {/* Public Routes - No Shell or Different Shell */}
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public Routes - No Shell or Different Shell */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -133,6 +143,7 @@ function App() {
           {/* 404 - Redirect to Home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </Router>
     </AuthProvider>
   );

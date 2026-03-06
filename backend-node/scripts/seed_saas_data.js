@@ -3,11 +3,11 @@ const dotenv = require('dotenv');
 
 // Load models
 const path = require('path');
-const University = require(path.join(__dirname, '../backend-node/models/University'));
-const College = require(path.join(__dirname, '../backend-node/models/College'));
+const University = require('../models/University');
+const College = require('../models/College');
 
 // Load env vars
-dotenv.config({ path: path.join(__dirname, '../backend-node/.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const seedData = async () => {
   try {
