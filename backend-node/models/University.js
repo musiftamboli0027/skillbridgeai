@@ -4,12 +4,17 @@ const universitySchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Please provide a university name'],
-    trim: true,
-    unique: true
+    unique: true,
+    trim: true
   },
-  location: {
+  state: {
     type: String,
     trim: true
+  },
+  country: {
+    type: String,
+    trim: true,
+    default: 'India'
   },
   createdAt: {
     type: Date,

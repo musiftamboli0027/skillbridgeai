@@ -6,12 +6,12 @@ const collegeSchema = new mongoose.Schema({
     required: [true, 'Please provide a college name'],
     trim: true
   },
-  universityId: {
+  university: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'University',
-    required: [true, 'Please provide a university ID']
+    required: [true, 'Please provide a university reference']
   },
-  location: {
+  city: {
     type: String,
     trim: true
   },
@@ -23,7 +23,7 @@ const collegeSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index to ensure uniqueness of college name within a university
-collegeSchema.index({ name: 1, universityId: 1 }, { unique: true });
+// Ensure uniqueness of college name within a university
+collegeSchema.index({ name: 1, university: 1 }, { unique: true });
 
 module.exports = mongoose.model('College', collegeSchema);

@@ -166,6 +166,7 @@ app.use('/api/collaboration', require('./routes/collaborationRoutes'));
 app.use('/api/community', require('./routes/communityRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/jobs', require('./routes/jobRoutes'));
+app.use('/api', require('./routes/universityRoutes'));
 
 
 // Home route
