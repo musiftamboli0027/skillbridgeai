@@ -18,6 +18,7 @@ class ApiService {
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers,
+            credentials: 'include', // Ensure cookies/auth headers are sent cross-origin
         });
 
         const data = await response.json();

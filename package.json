@@ -7,6 +7,7 @@
         "backend-node"
     ],
     "scripts": {
+        "start": "npm start -w backend-node",
         "dev": "concurrently \"npm run dev -w skillbridge-frontend\" \"npm run dev -w skillbridge-backend\"",
         "dev:frontend": "npm run dev -w skillbridge-frontend",
         "dev:backend": "npm run dev -w skillbridge-backend",

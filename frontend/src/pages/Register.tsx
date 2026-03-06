@@ -33,6 +33,8 @@ export default function Register() {
 
   const [universities, setUniversities] = useState<{_id: string, name: string}[]>([]);
   const [colleges, setColleges] = useState<{_id: string, name: string}[]>([]);
+  const [universityLoading, setUniversityLoading] = useState(false);
+  const [collegeLoading, setCollegeLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,11 +44,14 @@ export default function Register() {
 
   useEffect(() => {
     const fetchUnis = async () => {
+      setUniversityLoading(true);
       try {
         const res = await api.getUniversities();
         if (res.success) setUniversities(res.data);
       } catch {
         console.error('Failed to fetch universities');
+      } finally {
+        setUniversityLoading(false);
       }
     };
     fetchUnis();
@@ -58,11 +63,14 @@ export default function Register() {
       return;
     }
     const fetchColleges = async () => {
+      setCollegeLoading(true);
       try {
         const res = await api.getColleges(formData.university);
         if (res.success) setColleges(res.data);
       } catch {
         console.error('Failed to fetch colleges');
+      } finally {
+        setCollegeLoading(false);
       }
     };
     fetchColleges();
@@ -257,7 +265,9 @@ export default function Register() {
                     className="peer w-full bg-transparent border-b-2 border-slate-200 py-3 text-[#1E293B] focus:outline-none focus:border-[#2563EB] transition-all appearance-none cursor-pointer"
                   >
                     <option value="" disabled hidden></option>
-                    <option value="" className="text-slate-400">Select University</option>
+                    <option value="" className="text-slate-400">
+                      {universityLoading ? 'Loading Universities...' : 'Select University'}
+                    </option>
                     {universities.map(uni => (
                       <option key={uni._id} value={uni._id}>{uni.name}</option>
                     ))}
@@ -275,11 +285,13 @@ export default function Register() {
                     name="college"
                     value={formData.college}
                     onChange={handleChange}
-                    disabled={!formData.university}
+                    disabled={!formData.university || collegeLoading}
                     className="peer w-full bg-transparent border-b-2 border-slate-200 py-3 text-[#1E293B] focus:outline-none focus:border-[#2563EB] transition-all appearance-none cursor-pointer disabled:opacity-50"
                   >
                     <option value="" disabled hidden></option>
-                    <option value="">Select College</option>
+                    <option value="">
+                      {collegeLoading ? 'Loading Colleges...' : 'Select College'}
+                    </option>
                     {colleges.map(coll => (
                       <option key={coll._id} value={coll._id}>{coll.name}</option>
                     ))}
