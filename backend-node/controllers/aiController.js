@@ -76,6 +76,16 @@ exports.getTutorResponse = asyncHandler(async (req, res) => {
     res.status(503).json({ success: false, message: 'AI Tutor temporarily unavailable' });
 });
 
+exports.getTutorChat = asyncHandler(async (req, res) => {
+    const { message, conversationHistory = [], courseTitle } = req.body;
+    if (!message) return res.status(400).json({ success: false, message: 'Message required' });
+    
+    // We can use the same Lyzr agent call for this for now!
+    const result = await callLyzrAgent(message, 'chat-session');
+    if (result.success) return res.json({ success: true, reply: result.reply });
+    res.status(503).json({ success: false, message: 'AI Tutor temporarily unavailable' });
+});
+
 exports.debugCode = asyncHandler(async (req, res) => {
     const { code, language, lessonTitle } = req.body;
     if (!code || !language) return res.status(400).json({ success: false, message: 'Code and language required' });

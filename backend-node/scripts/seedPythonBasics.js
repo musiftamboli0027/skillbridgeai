@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const Course = require('./models/Course');
-const User = require('./models/User');
+const Course = require('../models/Course');
+const User = require('../models/User');
 
-dotenv.config({ path: './.env' });
+const path = require('path');
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const seedPythonBasics = async () => {
     try {

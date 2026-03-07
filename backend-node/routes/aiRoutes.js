@@ -6,6 +6,7 @@ const aiController = require('../controllers/aiController');
 
 // Tutor routes
 router.post('/tutor', aiController.getTutorResponse);
+router.post('/chat', aiController.getTutorChat);
 
 // Debug routes (2nd year+)
 router.post('/debug', protect, yearAccess(['2nd Year', '3rd Year', '4th Year']), aiController.debugCode);
