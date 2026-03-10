@@ -97,7 +97,51 @@ exports.debugCode = asyncHandler(async (req, res) => {
 
 exports.generateRoadmap = asyncHandler(async (req, res) => {
     const { career, level, skills, hours, budget, goal } = req.body;
-    const prompt = `Generate engineering roadmap for ${career}... (Shortened for space). Return JSON.`;
+    const prompt = `Generate a highly detailed, personalized 6-month engineering career roadmap for a ${level} level student interested in becoming a ${career}.
+    User Profile:
+    - Current level: ${level}
+    - Existing skills: ${Array.isArray(skills) ? skills.join(', ') : skills}
+    - Weekly availability: ${hours}
+    - Budget for learning: ${budget}
+    - Long-term goal: ${goal}
+
+    Return the final roadmap as a strictly valid JSON object with the following structure:
+    {
+      "title": "A catchy title for the roadmap",
+      "summary": "A concise summary of the strategy",
+      "kpis": [{"target": "Target objective", "metric": "How to measure", "timeframe": "When to achieve"}],
+      "techStack": ["Technology name"],
+      "differentiator": "A unique selling point/strategy for this student to stand out",
+      "mistakesToAvoid": ["Mistake description"],
+      "networkingStrategy": ["Actionable networking tip"],
+      "semester3": {
+        "title": "Skill Building Phase",
+        "months": [{"month": "Month 1", "focus": "Primary topic", "tasks": ["Specific task to complete"]}]
+      },
+      "semester4": {
+        "title": "Application & Projects Phase",
+        "months": [{"month": "Month 4", "focus": "Primary topic", "tasks": ["Specific task to complete"]}]
+      },
+      "skills": [{"name": "Skill name", "priority": "High/Medium/Low", "timeToLearn": "Estimated time"}],
+      "certifications": [{"name": "Cert name", "provider": "Provider name", "cost": "Estimated cost or Free", "url": "Official URL"}],
+      "projects": [{"title": "Project name", "difficulty": "Beginner/Intermediate/Advanced", "description": "Short project brief", "techStack": ["Tech"], "estimatedTime": "Days/Weeks"}],
+      "platforms": [{"name": "Platform name", "purpose": "Why use it", "url": "URL"}],
+      "internshipStrategy": {
+        "timeline": "When to apply",
+        "preparationSteps": ["Prep step"],
+        "targetCompanies": ["Company names"]
+      },
+      "portfolioStrategy": {
+        "githubTips": ["Specific GitHub repo tip"],
+        "linkedinTips": ["Specific profile optimization tip"]
+      },
+      "achievements": [{"target": "Milestone", "category": "Type", "deadline": "By which month"}],
+      "weeklyPlan": {
+        "totalHours": "${hours}",
+        "breakdown": [{"day": "Monday", "hours": 2, "focus": "Specific study area"}]
+      }
+    }
+    Ensure the content is professional, actionable, and specific to the ${career} field. Generate 3 to 4 months for each semester phase.`;
     const result = await generateAIResponse(prompt, true);
     if (result.success) {
         const saved = await CareerRoadmap.findOneAndUpdate(
