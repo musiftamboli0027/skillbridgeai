@@ -135,7 +135,7 @@ const LogicVisualizer3D: React.FC<LogicVisualizer3DProps> = ({ state }) => {
 
     return (
         <div ref={mountRef} className="w-full h-full bg-[#050506] overflow-hidden">
-            <Canvas shadows gl={{ antialias: true, alpha: true }}>
+            <Canvas shadows dpr={[1, 1.5]} gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}>
                 <SceneContent state={state} />
             </Canvas>
         </div>

@@ -105,7 +105,7 @@ exports.generateRoadmap = asyncHandler(async (req, res) => {
             { userId: req.user.id, profile: req.body, roadmap: result.data, generatedAt: new Date() },
             { upsert: true, new: true }
         );
-        return res.json({ success: true, roadmap: saved.roadmap });
+        return res.json({ success: true, roadmap: saved.roadmap, profile: saved.profile });
     }
     res.status(503).json({ success: false, message: 'Roadmap generation failed' });
 });

@@ -164,10 +164,10 @@ function RoadmapViewer({ roadmap, profile, onRegenerate }: { roadmap: any; profi
           </h1>
           <p className="text-[#94A3B8] text-sm mt-1 max-w-2xl">{roadmap.summary}</p>
           <div className="flex flex-wrap gap-2 mt-3">
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#7C3AED]/15 text-[#7C3AED]">{profile.career}</span>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#10B981]/15 text-[#10B981]">{profile.level}</span>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#F59E0B]/15 text-[#F59E0B]">{profile.hours}</span>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#00D4FF]/15 text-[#00D4FF]">{profile.budget}</span>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#7C3AED]/15 text-[#7C3AED]">{profile?.career || 'Career'}</span>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#10B981]/15 text-[#10B981]">{profile?.level || 'Level'}</span>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#F59E0B]/15 text-[#F59E0B]">{profile?.hours || 'Hours'}</span>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#00D4FF]/15 text-[#00D4FF]">{profile?.budget || 'Budget'}</span>
           </div>
         </div>
         <button onClick={onRegenerate}
@@ -538,7 +538,7 @@ export default function CareerRoadmap() {
   return (
     <DashboardLayout>
       <div className="animate-slide-in">
-        {showForm || !roadmap ? (
+        {showForm || !roadmap || !profile ? (
           <ProfileForm onGenerate={handleGenerate} loading={loading} />
         ) : (
           <RoadmapViewer roadmap={roadmap} profile={profile} onRegenerate={() => setShowForm(true)} />

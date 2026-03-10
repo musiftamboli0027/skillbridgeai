@@ -781,7 +781,7 @@ const ConceptVisualizer3D: React.FC<ConceptVisualizer3DProps> = ({ block }) => {
 
     return (
         <div className="w-full h-full bg-[#050506]/50 rounded-[2rem] overflow-hidden border border-white/5 relative">
-            <Canvas shadows gl={{ antialias: true, alpha: true }}>
+            <Canvas shadows dpr={[1, 1.5]} gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}>
                 <PerspectiveCamera makeDefault position={[0, 0, 7]} fov={45} />
                 <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.4} />
 

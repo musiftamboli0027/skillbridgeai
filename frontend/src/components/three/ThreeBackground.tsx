@@ -87,12 +87,12 @@ export default function ThreeBackground() {
 
     return (
         <div className="absolute inset-0 z-0 bg-[#020617]">
-            <Canvas camera={{ position: [0, 0, 5], fov: 75 }} dpr={[1, 2]}>
+            <Canvas camera={{ position: [0, 0, 5], fov: 75 }} dpr={[1, 1.5]} gl={{ powerPreference: 'high-performance', antialias: false }}>
                 <ambientLight intensity={0.4} />
                 <pointLight position={[10, 10, 10]} intensity={1} color="#8b5cf6" />
                 <spotLight position={[-10, 10, 10]} angle={0.15} penumbra={1} intensity={1} />
 
-                <Stars radius={100} depth={50} count={6000} factor={4} saturation={0} fade speed={1} />
+                <Stars radius={100} depth={50} count={2500} factor={4} saturation={0} fade speed={1} />
 
                 <AnimatedSphere scrollY={scrollY} />
                 <ParticleNetwork scrollY={scrollY} />
