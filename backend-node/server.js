@@ -157,6 +157,7 @@ app.use('/api/assignments', assignments);
 app.use('/api/progress', require('./routes/progressRoutes'));
 app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/certificates', require('./routes/certificateRoutes'));
+
 app.use('/api/saas', require('./routes/saasRoutes'));
 app.use('/api/career', require('./routes/careerRoutes'));
 app.use('/api/communication', require('./routes/communicationRoutes'));

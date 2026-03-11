@@ -2,11 +2,13 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const CareerRoadmap = require('../models/CareerRoadmap');
 const asyncHandler = require('../utils/asyncHandler');
 
-// AI Config
+// Lyzr Config
+const axios = require('axios');
 const LYZR_API_KEY = process.env.LYZR_API_KEY;
 const LYZR_AGENT_ID = process.env.LYZR_AGENT_ID;
-const LYZR_API_URL = 'https://agent-prod.studio.lyzr.ai/v3/inference/chat/';
+const LYZR_API_URL = process.env.LYZR_ENDPOINT || 'https://agent-prod.lyzr.ai/v1/inference';
 const LYZR_TIMEOUT_MS = 20000;
+
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const AI_TIMEOUT_MS = 10000;
@@ -18,25 +20,43 @@ const MODELS = [
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-// Helper functions
 async function callLyzrAgent(message, sessionId = 'default-session', userId = 'skillbridge-user') {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), LYZR_TIMEOUT_MS);
+    if (!LYZR_API_KEY || !LYZR_AGENT_ID) {
+        return { success: false, error: 'Lyzr AI is not configured' };
+    }
+
     try {
-        const response = await fetch(LYZR_API_URL, {
-            method: 'POST',
-            signal: controller.signal,
-            headers: { 'Content-Type': 'application/json', 'x-api-key': LYZR_API_KEY },
-            body: JSON.stringify({ agent_id: LYZR_AGENT_ID, session_id: sessionId, user_id: userId, message })
+        const response = await axios.post(LYZR_API_URL, {
+            agent_id: LYZR_AGENT_ID,
+            user_id: userId,
+            session_id: sessionId,
+            message: message,
+            query: message // Compatibility
+        }, {
+            headers: {
+                'x-api-key': LYZR_API_KEY,
+                'Authorization': `Bearer ${LYZR_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 55000 // 55s for AI
         });
-        clearTimeout(timer);
-        if (!response.ok) return { success: false, error: `Lyzr API error: HTTP ${response.status}` };
-        const json = await response.json();
-        const reply = json?.response ?? json?.message ?? json?.output ?? null;
-        return reply !== null ? { success: true, reply: String(reply) } : { success: false, error: 'Unexpected shape' };
+
+        const data = response.data;
+        // Lyzr responses can be in data.response, data.message, data.output, etc.
+        const reply = data?.response || data?.message || data?.output || 
+                      (data?.data && (data.data.response || data.data.message || data.data.output)) ||
+                      null;
+        
+        if (reply) {
+            return { success: true, replyContent: String(reply) };
+        }
+        
+        if (typeof data === 'string') return { success: true, replyContent: data };
+        
+        return { success: false, error: 'Empty response from Lyzr' };
     } catch (err) {
-        clearTimeout(timer);
-        return { success: false, error: err.message };
+        console.error('Lyzr API Error:', err.response?.data || err.message);
+        return { success: false, error: err.response?.data?.message || err.message };
     }
 }
 
@@ -69,21 +89,90 @@ async function generateAIResponse(prompt, isRoadmap = false) {
 
 // Controller Methods
 exports.getTutorResponse = asyncHandler(async (req, res) => {
-    const { message, sessionId } = req.body;
-    if (!message) return res.status(400).json({ success: false, message: 'Message required' });
-    const result = await callLyzrAgent(message, sessionId);
-    if (result.success) return res.json({ success: true, reply: result.reply });
-    res.status(503).json({ success: false, message: 'AI Tutor temporarily unavailable' });
+    const { message, question, sessionId } = req.body;
+    const input = message || question;
+    
+    if (!input) {
+        return res.status(400).json({ success: false, message: 'Message or question required' });
+    }
+    
+    const effectiveSessionId = sessionId || `session-${req.user?._id || 'anon'}`;
+    const userId = req.user?._id?.toString() || 'skillbridge-user';
+    
+    let result = await callLyzrAgent(input, effectiveSessionId, userId);
+    
+    // Fallback to Gemini
+    if (!result.success && GEMINI_API_KEY) {
+        console.log('Lyzr failed, falling back to Gemini for response...');
+        result = await generateAIChatResponse(input);
+    }
+    
+    if (result.success) {
+        return res.json({ success: true, reply: result.reply || result.replyContent });
+    }
+    
+    res.status(503).json({ 
+        success: false, 
+        message: 'AI Tutor is thinking hard. Try again in a moment!',
+        error: process.env.NODE_ENV === 'development' ? result.error : undefined
+    });
 });
 
+exports.getTutorConfig = (req, res) => {
+    res.json({
+        success: true,
+        available: !!LYZR_API_KEY && !!LYZR_AGENT_ID,
+        endpoint: LYZR_API_URL
+    });
+};
+
+async function generateAIChatResponse(message, history = []) {
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+        const chat = model.startChat({
+            history: history.map(h => ({
+                role: h.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: h.content }]
+            })),
+            generationConfig: {
+                maxOutputTokens: 1000,
+            },
+        });
+
+        const result = await chat.sendMessage(message);
+        const response = await result.response;
+        return { success: true, reply: response.text() };
+    } catch (err) {
+        console.error('Gemini Chat Error:', err);
+        return { success: false, error: err.message };
+    }
+}
+
 exports.getTutorChat = asyncHandler(async (req, res) => {
-    const { message, conversationHistory = [], courseTitle } = req.body;
+    const { message, conversationHistory = [], courseTitle, sessionId } = req.body;
     if (!message) return res.status(400).json({ success: false, message: 'Message required' });
     
-    // We can use the same Lyzr agent call for this for now!
-    const result = await callLyzrAgent(message, 'chat-session');
-    if (result.success) return res.json({ success: true, reply: result.reply });
-    res.status(503).json({ success: false, message: 'AI Tutor temporarily unavailable' });
+    const enrichedMessage = courseTitle ? `[Course: ${courseTitle}] ${message}` : message;
+    const effectiveSessionId = sessionId || `chat-${req.user?._id || 'anon'}`;
+    const userId = req.user?._id?.toString() || 'skillbridge-user';
+
+    // Try Lyzr first
+    let result = await callLyzrAgent(enrichedMessage, effectiveSessionId, userId);
+    
+    // If Lyzr fails and we have Gemini, fallback to Gemini
+    if (!result.success && GEMINI_API_KEY) {
+        console.log('Lyzr failed, falling back to Gemini for chat...');
+        result = await generateAIChatResponse(enrichedMessage, conversationHistory);
+    }
+    
+    if (result.success) {
+        return res.json({ success: true, reply: result.reply || result.replyContent });
+    }
+    
+    res.status(503).json({ 
+        success: false, 
+        message: 'AI Tutor is temporarily offline for maintenance.' 
+    });
 });
 
 exports.debugCode = asyncHandler(async (req, res) => {

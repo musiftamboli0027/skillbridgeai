@@ -228,7 +228,7 @@ export const api = {
   getAITutorChat: (data: any) =>
     request.post("/api/ai/chat", data),
 
-  getAITutorLyzr: (data: any) =>
+  getAITutorChatLyzr: (data: any) =>
     request.post("/api/ai/tutor", data),
 
   generateRoadmap: (data: any) =>
