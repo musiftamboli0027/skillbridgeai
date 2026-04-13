@@ -415,6 +415,17 @@ export const api = {
   
   verifyRecruiter: (userId: string, action: string) =>
     request.patch(`/api/jobs/verify-recruiter/${userId}`, { action }),
+
+  /* ---------- AI Interview ---------- */
+
+  generateInterviewQuestions: (data: any) => request.post("/api/interview/generate", data),
+  evaluateInterviewAnswer: (data: any) => request.post("/api/interview/evaluate", data),
+  generateInterviewReport: (data: any) => request.post("/api/interview/report", data),
+  uploadInterviewResume: (formData: FormData) => client.post("/api/interview/upload-resume", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getInterviewHistory: () => request.get("/api/interview/history"),
+  getInterviewDetails: (id: string) => request.get(`/api/interview/${id}`),
 };
 
 export default api;

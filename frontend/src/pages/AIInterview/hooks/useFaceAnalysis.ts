@@ -1,0 +1,172 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import * as faceapi from 'face-api.js';
+
+export interface FaceData {
+  isDetected: boolean;
+  eyeContact: number;
+  confidence: number;
+  expression: string;
+  expressions?: { [key: string]: number };
+}
+
+interface UseFaceAnalysisReturn {
+  faceData: FaceData;
+  modelsLoaded: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export const useFaceAnalysis = (
+  videoRef: React.RefObject<HTMLVideoElement | null>,
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  isActive: boolean
+): UseFaceAnalysisReturn => {
+  const [faceData, setFaceData] = useState<FaceData>({
+    isDetected: false,
+    eyeContact: 0,
+    confidence: 0,
+    expression: 'neutral',
+    expressions: {},
+  });
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const modelsLoadingRef = useRef(false);
+
+  // Load face-api models
+  useEffect(() => {
+    const loadModels = async () => {
+      if (modelsLoadingRef.current || modelsLoaded) return;
+      
+      modelsLoadingRef.current = true;
+      setIsLoading(true);
+      
+      const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+      
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+        ]);
+        
+        setModelsLoaded(true);
+        setIsLoading(false);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading face-api models:', err);
+        setError('Failed to load face detection models. Please check your internet connection.');
+        setIsLoading(false);
+      }
+    };
+
+    loadModels();
+  }, [modelsLoaded]);
+
+  const analyzeFace = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || !modelsLoaded) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    if (video.readyState !== 4 || video.paused || video.ended) return;
+
+    try {
+      const detections = await faceapi
+        .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
+        .withFaceLandmarks()
+        .withFaceExpressions();
+
+      if (detections.length > 0) {
+        const detection = detections[0];
+        const landmarks = detection.landmarks;
+        const expressions = detection.expressions;
+
+        // Calculate eye contact score
+        const leftEye = landmarks.getLeftEye();
+        const rightEye = landmarks.getRightEye();
+        const eyeContactScore = calculateEyeContact(leftEye, rightEye, video.videoWidth, video.videoHeight);
+
+        // Dominant expression
+        const sortedExpressions = Object.entries(expressions).sort((a, b) => b[1] - a[1]);
+        const dominantExpression = sortedExpressions[0]?.[0] || 'neutral';
+
+        const newData: FaceData = {
+          isDetected: true,
+          eyeContact: eyeContactScore,
+          confidence: Math.round(detection.detection.score * 100),
+          expression: dominantExpression,
+          expressions: expressions as any,
+        };
+
+        setFaceData(newData);
+
+        // Draw overlay
+        const displaySize = { width: video.videoWidth, height: video.videoHeight };
+        faceapi.matchDimensions(canvas, displaySize);
+        const resizedDetections = faceapi.resizeResults(detections, displaySize);
+        
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // Optional: You could draw landmarks here if needed for debugging
+          // faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+        }
+      } else {
+        setFaceData({
+          isDetected: false,
+          eyeContact: 0,
+          confidence: 0,
+          expression: 'none',
+          expressions: {},
+        });
+        
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    } catch (err) {
+      console.error('Error analyzing face:', err);
+    }
+  }, [videoRef, canvasRef, modelsLoaded]);
+
+  useEffect(() => {
+    if (isActive && modelsLoaded) {
+      analyzeFace();
+      intervalRef.current = setInterval(analyzeFace, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isActive, modelsLoaded, analyzeFace]);
+
+  return { faceData, modelsLoaded, isLoading, error };
+};
+
+const calculateEyeContact = (
+  leftEye: faceapi.Point[],
+  rightEye: faceapi.Point[],
+  videoWidth: number,
+  videoHeight: number
+): number => {
+  const getCenter = (points: faceapi.Point[]) => {
+    const sum = points.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+    return { x: sum.x / points.length, y: sum.y / points.length };
+  };
+
+  const leftCenter = getCenter(leftEye);
+  const rightCenter = getCenter(rightEye);
+  const eyesCenter = { x: (leftCenter.x + rightCenter.x) / 2, y: (leftCenter.y + rightCenter.y) / 2 };
+  const frameCenter = { x: videoWidth / 2, y: videoHeight / 2 };
+
+  const distance = Math.sqrt(Math.pow(eyesCenter.x - frameCenter.x, 2) + Math.pow(eyesCenter.y - frameCenter.y, 2));
+  const maxDistance = Math.sqrt(Math.pow(videoWidth / 2, 2) + Math.pow(videoHeight / 2, 2));
+  
+  return Math.max(0, Math.round(100 - (distance / (maxDistance * 0.4)) * 100)); // Tweaked sensitivity
+};

@@ -14,13 +14,8 @@ import {
     Github,
     Briefcase,
     FileText,
-    Users,
-    Trophy,
-    ClipboardList,
     Mic,
-    Award,
     TrendingUp,
-    MessageSquare,
     GraduationCap,
     Globe
 } from 'lucide-react';
@@ -38,9 +33,7 @@ const NAV_ITEMS = [
     { label: 'Visit Main Site', href: '/', icon: Globe, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
     { label: 'My Courses', href: '/dashboard/courses', icon: BookOpen, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
-    { label: 'AI Tutor', href: '/dashboard/ai-tutor', icon: Bot, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
     { label: 'Practice Lab', href: '/dashboard/practice', icon: Code, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
-    { label: 'Community Feed', href: '/dashboard/community-feed', icon: Users, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
 
     // 2nd Year+
     { label: 'Career Explorer', href: '/dashboard/career', icon: Compass, years: ['1st Year', '2nd Year', '3rd Year', '4th Year'] },
@@ -51,15 +44,9 @@ const NAV_ITEMS = [
 
     // 3rd Year+
     { label: 'Internships', href: '/dashboard/internships', icon: Briefcase, years: ['3rd Year', '4th Year'] },
-    { label: 'Resume Builder', href: '/dashboard/resume', icon: FileText, years: ['3rd Year', '4th Year'] },
-    { label: 'Communication', href: '/dashboard/comm-builder', icon: MessageSquare, years: ['3rd Year', '4th Year'] },
-    { label: 'Hackathons', href: '/dashboard/hackathons', icon: Trophy, years: ['3rd Year', '4th Year'] },
-    { label: 'Community', href: '/dashboard/community', icon: Users, years: ['3rd Year', '4th Year'] },
 
     // 4th Year Only
-    { label: 'Aptitude Prep', href: '/dashboard/placement', icon: ClipboardList, years: ['4th Year'] },
-    { label: 'AI Interview', href: '/dashboard/placement', icon: Mic, years: ['4th Year'] },
-    { label: 'Placement Cell', href: '/dashboard/placement', icon: Award, years: ['4th Year'] },
+    { label: 'AI Interview', href: '/dashboard/ai-interview', icon: Mic, years: ['4th Year'] },
 ];
 
 const BOTTOM_ITEMS = [

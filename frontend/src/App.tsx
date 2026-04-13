@@ -46,6 +46,7 @@ const PracticeLayout = lazy(() => import('./pages/LogicPractice/PracticeLayout')
 const Opportunities = lazy(() => import('./pages/Opportunities'));
 const OpportunitiesPublic = lazy(() => import('./pages/OpportunitiesPublic'));
 const RecruiterDashboard = lazy(() => import('./pages/RecruiterDashboard'));
+const AIInterview = lazy(() => import('./pages/AIInterview/AIInterview'));
 
 // Loader component for suspense
 const PageLoader = () => (
@@ -101,6 +102,7 @@ function App() {
           <Route path="/dashboard/community-feed" element={<ProtectedRoute><CommunityDashboard /></ProtectedRoute>} />
           <Route path="/dashboard/hackathons" element={<ProtectedRoute><CollaborativeHub /></ProtectedRoute>} />
           <Route path="/dashboard/placement" element={<ProtectedRoute><PlacementDashboard /></ProtectedRoute>} />
+          <Route path="/dashboard/ai-interview" element={<ProtectedRoute><AIInterview /></ProtectedRoute>} />
           <Route path="/dashboard/opportunities" element={<ProtectedRoute><Opportunities /></ProtectedRoute>} />
           <Route path="/dashboard/recruiter" element={<ProtectedRoute><RecruiterDashboard /></ProtectedRoute>} />
 

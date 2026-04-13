@@ -19,5 +19,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react', 'react-dom'],
+    exclude: ['face-api.js'],
   },
 });

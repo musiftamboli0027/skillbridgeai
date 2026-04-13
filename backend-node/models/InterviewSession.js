@@ -1,49 +1,22 @@
 const mongoose = require('mongoose');
 
-const interviewSessionSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const InterviewSessionSchema = new mongoose.Schema(
+  {
+    role: { type: String, required: true, trim: true },
+    level: { type: String, required: true, trim: true },
+    topics: { type: [String], default: [] },
+    status: {
+      type: String,
+      enum: ["created", "in_progress", "completed"],
+      default: "created"
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      // required: true // Not strictly required if we just wanna mirror exactly, but good for Skillbridge2
+    }
   },
-  company: {
-    type: String,
-    required: true
-  },
-  technicalScore: {
-    type: Number,
-    required: true
-  },
-  hrScore: {
-    type: Number,
-    required: true
-  },
-  aiFeedback: {
-    type: String,
-    required: true
-  },
-  categoryScores: {
-    Knowledge: Number,
-    Communication: Number,
-    Aptitude: Number,
-    Confidence: Number
-  },
-  status: {
-    type: String,
-    enum: ['Scheduled', 'Completed'],
-    default: 'Completed'
-  },
-  rounds: [{
-    title: String,
-    feedback: String,
-    score: Number
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
+  { timestamps: true }
+);
 
-interviewSessionSchema.index({ userId: 1, createdAt: -1 });
-
-module.exports = mongoose.model('InterviewSession', interviewSessionSchema);
+module.exports = mongoose.model('InterviewSession', InterviewSessionSchema);

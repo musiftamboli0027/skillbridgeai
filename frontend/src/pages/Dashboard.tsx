@@ -317,21 +317,6 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        {/* AI Tutor Usage */}
-                        <div className="glass-card p-5">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-white font-medium">AI Tutor</h3>
-                                <Activity size={16} className="text-[#7C3AED]" />
-                            </div>
-                            <div className="text-center py-4">
-                                <p className="text-4xl font-bold text-white">24m</p>
-                                <p className="text-sm text-[#94A3B8] mt-1 font-medium">Avg. study session</p>
-                            </div>
-                            <div className="h-2 bg-white/10 rounded-full overflow-hidden mt-4">
-                                <div className="h-full bg-gradient-to-r from-[#7C3AED] to-[#00D4FF] rounded-full" style={{ width: '65%' }} />
-                            </div>
-                            <p className="text-xs text-[#64748B] mt-2">Keep it up! You're above average</p>
-                        </div>
                     </div>
                 </div>
 
