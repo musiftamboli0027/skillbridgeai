@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Award, TrendingUp, AlertCircle, CheckCircle, RotateCcw, Download, 
+  Award, TrendingUp, CheckCircle, RotateCcw, Download, 
   Brain, Eye, Smile, Target, MessageSquare, Lightbulb, Star 
 } from 'lucide-react';
 import { useInterview } from '../../../context/InterviewContext';
@@ -70,7 +70,7 @@ const ResultDashboard: React.FC = () => {
                 </linearGradient>
               </defs>
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center relative z-20">
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
               <motion.span 
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}

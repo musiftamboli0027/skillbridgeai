@@ -4,8 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Bot,
     X,
-    ChevronDown,
-    Loader2,
     Lightbulb,
     Code2,
     Bug,
@@ -140,12 +138,13 @@ const ChatBubble: React.FC<{ message: Message }> = ({ message }) => {
                     {message.type === 'feedback' && message.feedback ? (
                         <FeedbackCard feedback={message.feedback} />
                     ) : (
-                        <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/5 prose-code:text-indigo-400"
-                        >
-                            {message.content}
-                        </ReactMarkdown>
+                        <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/5 prose-code:text-indigo-400">
+                            <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                            >
+                                {message.content}
+                            </ReactMarkdown>
+                        </div>
                     )}
                 </div>
                 <span className={cn(

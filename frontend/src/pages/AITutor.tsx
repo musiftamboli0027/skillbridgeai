@@ -1,35 +1,95 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
-import { api } from '../services/api';
+import { userStorage, type UserData } from '../utils/userStorage';
 import {
   Send, Bot, User, Sparkles, MessageSquare, Copy, Check,
-  Trash2, BookOpen, Code2, Lightbulb, HelpCircle, RefreshCw
+  Trash2, RefreshCw, ChevronRight,
+  Target, GraduationCap, Briefcase, Brain
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  type?: 'text' | 'roadmap' | 'course';
+  data?: any;
   timestamp: Date;
 }
 
-const SUGGESTIONS = [
-  { text: 'Explain variables in Python', icon: BookOpen },
-  { text: 'Debug my code', icon: Code2 },
-  { text: 'What are loops?', icon: HelpCircle },
-  { text: 'Give me a practice problem', icon: Lightbulb },
-  { text: 'Explain functions with examples', icon: Sparkles },
-  { text: 'What are data types?', icon: BookOpen },
-];
+const ROADMAPS: Record<string, string[]> = {
+  'job': ['Skill Proficiency Assessment', 'Personalized Roadmap Generation', 'Portfolio Building', 'Interview Preparation'],
+  'skill': ['Fundamental Concepts Mastery', 'Practical Implementation Projects', 'Advanced Topic Deep Dive', 'Expert Certification'],
+  'switch': ['Industry Context & Trends', 'Skill Gap Analysis', 'Intensive Bridge Learning', 'Portfolio & Profile Transformation'],
+};
+
+const COURSE_SUGGESTIONS: Record<string, any> = {
+  'job': {
+    title: 'Career Genesis: Path to Employment',
+    duration: '15 hours',
+    level: 'Comprehensive',
+    icon: Briefcase
+  },
+  'skill': {
+    title: 'Mastery Series: Advanced Implementation',
+    duration: '10 hours',
+    level: 'Expert',
+    icon: Brain
+  },
+  'switch': {
+    title: 'Pivot Point: The Industry Bridge',
+    duration: '20 hours',
+    level: 'Foundational',
+    icon: RefreshCw
+  }
+};
 
 export default function AITutor() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
+  const initialized = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Helper for generating unique IDs
+  const generateId = (prefix = '') => `${prefix}${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+  // Load user data and send initial message
+  useEffect(() => {
+    if (initialized.current) return;
+    const userData = userStorage.getUser();
+    setUser(userData);
+
+    if (userData && messages.length === 0) {
+      initialized.current = true;
+      // Auto-generate welcome message
+      setIsTyping(true);
+      setTimeout(() => {
+        const welcomeMsg: Message = {
+          id: generateId('welcome-'),
+          role: 'assistant',
+          content: `Hey 👋 I see you're here to ${
+            userData.goal === 'job' ? 'get a job' : userData.goal === 'skill' ? 'master a new skill' : 'switch your career'
+          }. \n\nI've analyzed your goal: "${userData.intent}" and I'm ready to guide you step-by-step.`,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMsg]);
+        setIsTyping(false);
+
+        // Send roadmap after a short delay
+        setTimeout(() => {
+          sendRoadmap(userData);
+        }, 1500);
+      }, 1000);
+    }
+  }, []);
+
+  // Derived state for the active roadmap
+  const activeRoadmap = [...messages].reverse().find((m: Message) => m.type === 'roadmap')?.data as string[] || (user?.goal ? ROADMAPS[user.goal] : null);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -38,19 +98,57 @@ export default function AITutor() {
     }
   }, [messages, isTyping]);
 
-  // Auto-size textarea
+  const sendRoadmap = (userData: UserData) => {
+    setIsTyping(true);
+    setTimeout(() => {
+      const roadmap = ROADMAPS[userData.goal] || ROADMAPS['job'];
+      const roadmapMsg: Message = {
+        id: generateId('roadmap-'),
+        role: 'assistant',
+        content: `Let's start your journey! Here is your personalized roadmap:`,
+        type: 'roadmap',
+        data: roadmap,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, roadmapMsg]);
+      setIsTyping(false);
+
+      // Finally recommended course
+      setTimeout(() => {
+        sendCourseRecommendation(userData.goal);
+      }, 1500);
+    }, 1000);
+  };
+
+  const sendCourseRecommendation = (goal: string) => {
+    setIsTyping(true);
+    setTimeout(() => {
+      const course = COURSE_SUGGESTIONS[goal] || COURSE_SUGGESTIONS['job'];
+      const courseMsg: Message = {
+        id: generateId('course-rec-'),
+        role: 'assistant',
+        content: `I've also selected a core course to kickstart your progress:`,
+        type: 'course',
+        data: course,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, courseMsg]);
+      setIsTyping(false);
+    }, 1000);
+  };
+
+  // Auto-scroll to bottom
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [input]);
+  }, [messages, isTyping]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isTyping) return;
 
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: generateId('user-'),
       role: 'user',
       content: text.trim(),
       timestamp: new Date()
@@ -61,36 +159,74 @@ export default function AITutor() {
     setIsTyping(true);
 
     try {
-      // Build conversation history for context
-      const history = [...messages, userMsg].slice(-10).map(m => ({
-        role: m.role,
-        content: m.content
-      }));
-
-      const res = await api.getAITutorChat({
-        message: text.trim(),
-        conversationHistory: history,
-        courseTitle: 'Python Basics'
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/ai/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('skillbridge_token')}`
+        },
+        body: JSON.stringify({
+          message: text,
+          conversationHistory: messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
+          user: userStorage.getUser()
+        })
       });
 
+      if (!response.ok) throw new Error('Failed to connect to AI');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      const aiMsgId = generateId('ai-');
       const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: aiMsgId,
         role: 'assistant',
-        content: res.reply || res.message || "I'm having trouble processing that. Could you try rephrasing?",
+        content: '',
         timestamp: new Date()
       };
-
+      
       setMessages(prev => [...prev, aiMsg]);
-    } catch {
+      setIsTyping(false);
+
+      if (reader) {
+        let accumulatedContent = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') break;
+              
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text) {
+                  accumulatedContent += parsed.text;
+                  setMessages(prev => 
+                    prev.map(m => m.id === aiMsgId ? { ...m, content: accumulatedContent } : m)
+                  );
+                }
+              } catch (e) {
+                console.error('Error parsing stream chunk', e);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Streaming Error:', error);
+      setIsTyping(false);
       const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: generateId('error-'),
         role: 'assistant',
-        content: "I'm temporarily unavailable. Please try again in a moment! 🔄",
+        content: "I'm having trouble connecting to my brain right now. Please check if your API key is valid and try again!",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMsg]);
-    } finally {
-      setIsTyping(false);
     }
   }, [messages, isTyping]);
 
@@ -113,213 +249,244 @@ export default function AITutor() {
     setMessages([]);
   };
 
-  const formatMessage = (content: string) => {
-    // Parse code blocks
-    const parts = content.split(/(```[\s\S]*?```)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('```') && part.endsWith('```')) {
-        const codeContent = part.slice(3, -3);
-        const firstLineEnd = codeContent.indexOf('\n');
-        const lang = firstLineEnd > 0 ? codeContent.slice(0, firstLineEnd).trim() : '';
-        const code = firstLineEnd > 0 ? codeContent.slice(firstLineEnd + 1) : codeContent;
-        return (
-          <div key={i} className="my-3 rounded-xl overflow-hidden border border-white/10">
-            <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 text-[10px] text-[#94A3B8] font-bold uppercase">
-              <span>{lang || 'code'}</span>
-              <button onClick={() => copyToClipboard(code, `code-${i}`)}
-                className="hover:text-white transition-colors flex items-center gap-1">
-                {copiedId === `code-${i}` ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
-              </button>
-            </div>
-            <pre className="p-3 bg-[#0D1117] text-[#E6EDF3] text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre-wrap">{code}</pre>
-          </div>
-        );
-      }
-      // Parse bullet points and bold
+  const formatMessage = (msg: Message) => {
+    if (msg.type === 'course') {
+      const course = msg.data;
+      const Icon = course.icon;
       return (
-        <span key={i} className="whitespace-pre-wrap">
-          {part.split('\n').map((line, j) => {
-            // Bold markers
-            let formatted: any = line;
-            if (line.includes('**')) {
-              const boldParts = line.split(/\*\*(.*?)\*\*/g);
-              formatted = boldParts.map((bp: string, k: number) =>
-                k % 2 === 1 ? <strong key={k} className="text-white font-bold">{bp}</strong> : bp
-              );
-            }
-            // Bullet points
-            if (line.trim().startsWith('•') || line.trim().startsWith('-')) {
-              return <div key={j} className="pl-3 py-0.5 flex gap-2"><span className="text-[#10B981] shrink-0">•</span><span>{formatted}</span></div>;
-            }
-            return <span key={j}>{formatted}{j < part.split('\n').length - 1 ? '\n' : ''}</span>;
-          })}
-        </span>
+        <div className="mt-4 p-5 rounded-[24px] bg-white border border-orange-100 shadow-sm transition-all hover:shadow-md">
+          <div className="flex gap-4 items-start mb-4">
+             <div className="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-orange-100">
+                <Icon size={24} />
+             </div>
+             <div>
+                <h4 className="text-slate-900 font-black text-lg leading-tight">{course.title}</h4>
+                <div className="flex items-center gap-2 mt-1">
+                   <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">{course.level}</span>
+                   <span className="text-xs font-medium text-slate-400">• {course.duration}</span>
+                </div>
+             </div>
+          </div>
+          <button className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 group">
+            Start Learning <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
       );
-    });
+    }
+
+    if (msg.type === 'roadmap') {
+        const roadmap = msg.data as string[];
+        return (
+            <div className="mt-4 space-y-3">
+                {roadmap.map((step, idx) => (
+              <div 
+                key={`${msg.id}-${idx}`}
+                className="flex items-start gap-3 p-3 rounded-lg hover:bg-orange-50 transition-colors cursor-pointer group"
+              >
+                        <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center font-black text-xs">
+                           {idx + 1}
+                        </div>
+                        <span className="text-sm font-bold text-slate-700">{step}</span>
+                        <div className="ml-auto w-2 h-2 rounded-full bg-slate-200" />
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    return (
+      <div className="space-y-1">
+        {msg.content.split('\n').map((line, j) => (
+          <p key={j} className={msg.role === 'assistant' ? 'text-slate-700 font-medium leading-relaxed' : ''}>
+            {line}
+          </p>
+        ))}
+      </div>
+    );
   };
 
-  // ── Empty State ──
-  if (messages.length === 0 && !isTyping) {
-    return (
-      <DashboardLayout>
-        <div className="h-[calc(100vh-140px)] flex flex-col">
-          {/* Welcome */}
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#7C3AED] to-[#00D4FF] flex items-center justify-center mb-6 shadow-2xl shadow-[#7C3AED]/20">
-              <Bot size={36} className="text-white" />
+  return (
+    <DashboardLayout>
+      <div className="h-[calc(100vh-120px)] flex flex-col lg:flex-row max-w-[1600px] mx-auto w-full gap-6 font-inter overflow-hidden min-h-0">
+        
+        {/* Main Chat Column */}
+        <div className="flex-1 flex flex-col min-w-0 bg-white/50 backdrop-blur-sm rounded-[40px] border border-slate-100 overflow-hidden shadow-2xl shadow-slate-200/20">
+          
+          {/* Chat Header */}
+          <div className="flex items-center justify-between px-8 py-6 shrink-0 border-b border-slate-100 bg-white/80 backdrop-blur-md z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-100">
+                <Sparkles size={24} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">AI Tutor</h1>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="flex items-center gap-1 text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-full">
+                    <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Active
+                  </span>
+                </div>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">AI Study Companion</h1>
-            <p className="text-[#94A3B8] max-w-md leading-relaxed">
-              I'm trained on your course syllabus. Ask me anything about Python, get help debugging code, or practice with guided exercises.
-            </p>
+            <button onClick={clearChat} className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+              <Trash2 size={20} />
+            </button>
+          </div>
 
-            {/* Suggestion Chips */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-8 max-w-xl">
-              {SUGGESTIONS.map((s, i) => {
-                const Icon = s.icon;
-                return (
-                  <button key={i} onClick={() => sendMessage(s.text)}
-                    className="glass-card p-3 text-left hover:border-[#7C3AED]/30 transition-all group">
-                    <Icon size={14} className="text-[#7C3AED] mb-1.5 group-hover:text-[#00D4FF] transition-colors" />
-                    <p className="text-xs text-[#94A3B8] group-hover:text-white transition-colors">{s.text}</p>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Messages Area */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-8 px-8 py-10 custom-scrollbar scroll-smooth">
+            <AnimatePresence initial={false}>
+              {messages.map((msg) => (
+                <motion.div 
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center shrink-0 mt-1">
+                      <Bot size={20} className="text-orange-500" />
+                    </div>
+                  )}
+                  
+                  <div className={`max-w-[85%] ${msg.role === 'user' ? 'order-first' : ''}`}>
+                    <div className={`rounded-[28px] px-6 py-4 shadow-sm hover:shadow-md transition-shadow duration-300 ${
+                      msg.role === 'user'
+                        ? 'bg-slate-900 text-white rounded-tr-sm'
+                        : 'bg-white text-slate-900 rounded-tl-sm border border-slate-100'
+                    }`}>
+                      {formatMessage(msg)}
+                    </div>
+                    <div className={`flex items-center gap-3 mt-2 px-2 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {msg.role === 'assistant' && (
+                        <button 
+                          onClick={() => copyToClipboard(msg.content, msg.id)}
+                          className="text-[10px] font-black text-slate-400 hover:text-orange-500 flex items-center gap-1 uppercase tracking-widest transition-colors"
+                        >
+                          {copiedId === msg.id ? <Check size={10} /> : <Copy size={10} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {msg.role === 'user' && (
+                    <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0 mt-1 shadow-sm">
+                      <User size={20} className="text-orange-600" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {isTyping && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shrink-0">
+                  <Bot size={20} className="text-orange-500" />
+                </div>
+                <div className="bg-white border border-slate-100 rounded-[28px] rounded-tl-sm px-6 py-4 flex items-center gap-3 shadow-sm">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-bounce" />
+                    <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  </div>
+                  <span className="text-[11px] font-black text-orange-500/60 uppercase tracking-widest">Tutor is thinking...</span>
+                </div>
+              </motion.div>
+            )}
           </div>
 
           {/* Input Area */}
-          <div className="p-4 max-w-3xl mx-auto w-full">
-            <div className="relative glass-card p-2 flex items-end gap-2">
+          <div className="px-8 pb-8 pt-4 shrink-0 bg-white/80 backdrop-blur-md border-t border-slate-50">
+            <div className="relative bg-white border-2 border-slate-100 shadow-xl shadow-slate-200/30 p-2.5 flex items-end gap-3 rounded-[32px] focus-within:border-orange-200 transition-all focus-within:shadow-orange-100/20">
+              <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                <MessageSquare size={20} />
+              </div>
               <textarea
                 ref={inputRef}
                 rows={1}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask anything about Python..."
-                className="flex-1 bg-transparent text-white text-sm outline-none resize-none px-3 py-2.5 placeholder-[#64748B] max-h-[120px]"
+                placeholder="Ask your tutor anything..."
+                className="flex-1 bg-transparent text-slate-900 text-base font-bold outline-none resize-none py-2.5 placeholder-slate-300 max-h-32"
               />
-              <button onClick={handleSend} disabled={!input.trim()}
-                className="shrink-0 w-10 h-10 bg-gradient-to-r from-[#7C3AED] to-[#00D4FF] rounded-xl flex items-center justify-center text-white disabled:opacity-30 hover:shadow-lg hover:shadow-[#7C3AED]/20 transition-all">
-                <Send size={16} />
+              <button 
+                onClick={handleSend}
+                disabled={!input.trim() || isTyping}
+                className="w-11 h-11 bg-orange-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-orange-100 hover:shadow-orange-200 disabled:opacity-20 transition-all hover:-translate-y-0.5 shrink-0"
+              >
+                <Send size={18} />
               </button>
             </div>
-            <p className="text-[10px] text-[#475569] text-center mt-2">Powered by SkillBridge AI · Trained on your course syllabus</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // ── Chat View ──
-  return (
-    <DashboardLayout>
-      <div className="h-[calc(100vh-140px)] flex flex-col">
-        {/* Chat Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#00D4FF] flex items-center justify-center shadow-lg shadow-[#7C3AED]/20">
-              <Bot size={20} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-white font-bold flex items-center gap-2">
-                AI Study Companion
-                <span className="flex items-center gap-1 text-[10px] text-[#10B981] font-medium">
-                  <span className="w-1.5 h-1.5 bg-[#10B981] rounded-full animate-pulse" /> Online
-                </span>
-              </h2>
-              <p className="text-[10px] text-[#64748B]">Powered by Gemini · Python Basics Course</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={clearChat}
-              className="px-3 py-1.5 bg-white/5 hover:bg-[#EF4444]/10 border border-white/5 rounded-lg text-[10px] text-[#94A3B8] hover:text-[#EF4444] font-bold transition-all flex items-center gap-1">
-              <Trash2 size={10} /> Clear
-            </button>
           </div>
         </div>
 
-        {/* Messages Area */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar pb-4">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#00D4FF] flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot size={16} className="text-white" />
+        {/* Roadmap Sidebar */}
+        <div className="hidden lg:flex w-80 flex-col shrink-0 bg-white/40 backdrop-blur-sm rounded-[40px] border border-slate-100 overflow-hidden shadow-xl shadow-slate-200/10">
+           <div className="px-8 py-6 border-b border-slate-100 bg-white/60">
+              <div className="flex items-center gap-3 mb-1">
+                <Target size={18} className="text-orange-600" />
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Your Learning Path</h3>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Goal: {user?.goal || 'Personalized'}</p>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+              {activeRoadmap ? (
+                <div className="space-y-4">
+                  {activeRoadmap.map((step, idx) => (
+                    <div key={idx} className="group relative flex items-start gap-4 p-4 bg-white border border-slate-100 rounded-[24px] shadow-sm hover:shadow-md transition-all cursor-pointer">
+                      <div className="flex flex-col items-center shrink-0">
+                         <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-black shadow-lg shadow-orange-100 z-10">
+                            {idx + 1}
+                         </div>
+                         {idx < activeRoadmap.length - 1 && (
+                           <div className="w-0.5 h-full bg-slate-100 absolute top-12 left-8 -z-0" />
+                         )}
+                      </div>
+                      <div className="pt-1">
+                        <span className="text-xs font-black text-slate-700 leading-tight group-hover:text-orange-600 transition-colors uppercase tracking-tight">{step}</span>
+                        <div className="flex items-center gap-1.5 mt-2">
+                           <span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-orange-400 transition-colors" />
+                           <span className="text-[9px] font-bold text-slate-300 uppercase">Not Started</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                   <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-4">
+                      <RefreshCw size={24} className="animate-spin-slow" />
+                   </div>
+                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Initializing Roadmap...</p>
                 </div>
               )}
-              <div className={`max-w-[75%] ${msg.role === 'user' ? 'order-first' : ''}`}>
-                <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'bg-[#7C3AED] text-white rounded-tr-sm'
-                    : 'glass-card text-[#CBD5E1] rounded-tl-sm'
-                }`}>
-                  {msg.role === 'assistant' ? formatMessage(msg.content) : msg.content}
-                </div>
-                <div className={`flex items-center gap-2 mt-1 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                  <span className="text-[9px] text-[#475569]">
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {msg.role === 'assistant' && (
-                    <button onClick={() => copyToClipboard(msg.content, msg.id)}
-                      className="text-[9px] text-[#475569] hover:text-white flex items-center gap-0.5 transition-colors">
-                      {copiedId === msg.id ? <><Check size={9} /> Copied</> : <><Copy size={9} /> Copy</>}
-                    </button>
-                  )}
-                </div>
-              </div>
-              {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <User size={16} className="text-[#94A3B8]" />
-                </div>
-              )}
-            </div>
-          ))}
+           </div>
 
-          {/* Typing Indicator */}
-          {isTyping && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#00D4FF] flex items-center justify-center shrink-0">
-                <Bot size={16} className="text-white" />
+           <div className="p-6 mt-auto">
+              <div className="p-4 bg-slate-900 rounded-[28px] text-white">
+                 <div className="flex items-center gap-2 mb-2">
+                    <GraduationCap size={14} className="text-orange-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Level Progression</span>
+                 </div>
+                 <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden mb-2">
+                    <motion.div 
+                       initial={{ width: 0 }}
+                       animate={{ width: '35%' }}
+                       className="h-full bg-orange-500"
+                    />
+                 </div>
+                 <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    <span>Rank: Novice</span>
+                    <span className="text-white">35% to Level 2</span>
+                 </div>
               </div>
-              <div className="glass-card rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
-                <RefreshCw size={12} className="text-[#7C3AED] animate-spin" />
-                <span className="text-xs text-[#64748B]">Thinking...</span>
-              </div>
-            </div>
-          )}
+           </div>
         </div>
 
-        {/* Input Area */}
-        <div className="pt-4 border-t border-white/5 shrink-0">
-          {/* Quick Suggestions */}
-          <div className="flex gap-2 mb-3 overflow-x-auto pb-1 custom-scrollbar">
-            {['Explain this concept', 'Give me an example', 'Quiz me', 'Next topic'].map((tag) => (
-              <button key={tag} onClick={() => sendMessage(tag)}
-                className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[10px] font-bold text-[#64748B] hover:text-white hover:border-[#7C3AED]/30 transition-all whitespace-nowrap shrink-0">
-                {tag}
-              </button>
-            ))}
-          </div>
-          <div className="relative glass-card p-2 flex items-end gap-2">
-            <MessageSquare size={16} className="text-[#475569] shrink-0 ml-2 mb-3" />
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question, paste code, or request a practice problem..."
-              className="flex-1 bg-transparent text-white text-sm outline-none resize-none py-2.5 placeholder-[#64748B] max-h-[120px]"
-            />
-            <button onClick={handleSend} disabled={!input.trim() || isTyping}
-              className="shrink-0 w-10 h-10 bg-gradient-to-r from-[#7C3AED] to-[#00D4FF] rounded-xl flex items-center justify-center text-white disabled:opacity-30 hover:shadow-lg hover:shadow-[#7C3AED]/20 transition-all">
-              <Send size={16} />
-            </button>
-          </div>
-          <p className="text-[10px] text-[#475569] text-center mt-2">Shift+Enter for new line · Trained on SkillBridge Python Basics syllabus</p>
-        </div>
       </div>
     </DashboardLayout>
   );

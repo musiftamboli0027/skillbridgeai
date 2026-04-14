@@ -47,6 +47,8 @@ const Opportunities = lazy(() => import('./pages/Opportunities'));
 const OpportunitiesPublic = lazy(() => import('./pages/OpportunitiesPublic'));
 const RecruiterDashboard = lazy(() => import('./pages/RecruiterDashboard'));
 const AIInterview = lazy(() => import('./pages/AIInterview/AIInterview'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
 
 // Loader component for suspense
 const PageLoader = () => (
@@ -66,7 +68,9 @@ function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public Routes - No Shell or Different Shell */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/old-home" element={<Home />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/recruiter-login" element={<RecruiterLogin />} />

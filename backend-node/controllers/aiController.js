@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+
 const CareerRoadmap = require('../models/CareerRoadmap');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -173,6 +174,68 @@ exports.getTutorChat = asyncHandler(async (req, res) => {
         success: false, 
         message: 'AI Tutor is temporarily offline for maintenance.' 
     });
+});
+
+exports.streamTutorChat = asyncHandler(async (req, res) => {
+    const { message, conversationHistory = [], user } = req.body;
+    
+    if (!message) {
+        return res.status(400).json({ success: false, message: 'Message required' });
+    }
+
+    if (!GEMINI_API_KEY) {
+        return res.status(500).json({ success: false, message: 'Gemini API key not configured' });
+    }
+
+    const systemPrompt = `You are SkillPath AI Tutor, a premium learning assistant.
+User Context:
+- Goal: ${user?.goal || 'General Learning'}
+- Level: ${user?.level || 'Beginner'}
+- Interest: ${user?.intent || 'Professional Growth'}
+
+Guidelines:
+1. Provide actionable roadpoints and clear next steps.
+2. Recommend specific topics or skills to master.
+3. Keep tokens under 500 characters unless detailing a roadmap.
+4. Maintain a supportive, expert, and encouraging tone.
+5. Use markdown for structure (bold, bullet points).`;
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    try {
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
+            systemInstruction: systemPrompt
+        });
+
+        const chat = model.startChat({
+            history: conversationHistory.map(m => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+            })),
+            generationConfig: {
+                maxOutputTokens: 1024,
+            },
+        });
+
+        const result = await chat.sendMessageStream(message);
+
+        for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            if (chunkText) {
+                res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+            }
+        }
+        
+        res.write('data: [DONE]\n\n');
+        res.end();
+    } catch (error) {
+        console.error('Gemini Streaming Error:', error);
+        res.write(`data: ${JSON.stringify({ error: 'Failed to generate response' })}\n\n`);
+        res.end();
+    }
 });
 
 exports.debugCode = asyncHandler(async (req, res) => {

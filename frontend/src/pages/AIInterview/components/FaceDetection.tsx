@@ -49,10 +49,11 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({ isActive }) => {
     }
 
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
+      const currentVideo = videoRef.current;
+      if (currentVideo && currentVideo.srcObject) {
+        const stream = currentVideo.srcObject as MediaStream;
         stream.getTracks().forEach((track) => track.stop());
-        videoRef.current.srcObject = null;
+        currentVideo.srcObject = null;
         setIsCameraReady(false);
       }
     };
@@ -186,7 +187,9 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({ isActive }) => {
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-md">
           <div className="text-center text-white">
             <Loader2 className="w-10 h-10 mx-auto mb-4 animate-spin text-orange-500" />
-            <p className="text-sm font-medium text-gray-300">Initializing AI Eye-Tracking...</p>
+            <p className="text-sm font-medium text-gray-300">
+              {cameraError ? cameraError : "Initializing AI Eye-Tracking..."}
+            </p>
           </div>
         </div>
       )}

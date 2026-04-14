@@ -84,8 +84,8 @@ export const InterviewProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       } else {
         throw new Error(data.message || 'Failed to start interview');
       }
-    } catch (err: any) {
-      setState(prev => ({ ...prev, isLoading: false, error: err.message }));
+    } catch (err) {
+      setState(prev => ({ ...prev, isLoading: false, error: err instanceof Error ? err.message : 'An error occurred' }));
     }
   };
 
@@ -120,8 +120,8 @@ export const InterviewProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           isLoading: false,
         }));
       }
-    } catch (err: any) {
-      setState(prev => ({ ...prev, isLoading: false, error: err.message }));
+    } catch (err) {
+      setState(prev => ({ ...prev, isLoading: false, error: err instanceof Error ? err.message : 'An error occurred' }));
     }
   };
 
@@ -144,8 +144,8 @@ export const InterviewProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (data.success) {
         setState(prev => ({ ...prev, status: 'completed', isLoading: false }));
       }
-    } catch (err: any) {
-      setState(prev => ({ ...prev, isLoading: false, error: err.message }));
+    } catch (err) {
+      setState(prev => ({ ...prev, isLoading: false, error: err instanceof Error ? err.message : 'An error occurred' }));
     }
   };
 
@@ -187,6 +187,7 @@ export const InterviewProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useInterview = () => {
   const context = useContext(InterviewContext);
   if (context === undefined) {

@@ -105,7 +105,6 @@ export const useFaceAnalysis = (
         // Draw overlay
         const displaySize = { width: video.videoWidth, height: video.videoHeight };
         faceapi.matchDimensions(canvas, displaySize);
-        const resizedDetections = faceapi.resizeResults(detections, displaySize);
         
         const ctx = canvas.getContext('2d');
         if (ctx) {

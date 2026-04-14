@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { 
-  Mic, Zap, Trophy, History, PlayCircle, Loader2, Sparkles, 
-  AlertCircle, Users, Briefcase, ChevronRight, Download, Target, ChevronDown 
+  Mic, Zap, Trophy, History, Loader2, Sparkles, 
+  Users, Briefcase, ChevronRight, Download, Target, ChevronDown 
 } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardLayout from "../../components/layout/DashboardLayout";
@@ -10,9 +10,20 @@ import InterviewPage from "./components/InterviewPage";
 import ResultDashboard from "./components/ResultDashboard";
 import api from "../../services/api";
 
+interface InterviewSession {
+  _id: string;
+  role: string;
+  type: string;
+  difficulty: string;
+  createdAt: string;
+  result?: {
+    overallScore: number;
+  };
+}
+
 function AIInterviewContent() {
-  const { status, startInterview, resetInterview, isLoading } = useInterview();
-  const [history, setHistory] = useState<any[]>([]);
+  const { status, startInterview, isLoading } = useInterview();
+  const [history, setHistory] = useState<InterviewSession[]>([]);
   const [form, setForm] = useState({
     fullName: "",
     role: "Frontend Engineer",
@@ -47,7 +58,13 @@ function AIInterviewContent() {
     try {
       const formData = new FormData();
       formData.append('resume', file);
-      const res = await api.uploadInterviewResume(formData);
+      
+      interface UploadResponse {
+        success: boolean;
+        text: string;
+      }
+      
+      const res = await api.uploadInterviewResume(formData) as unknown as UploadResponse;
       if (res.success) {
         setResumeText(res.text);
       }

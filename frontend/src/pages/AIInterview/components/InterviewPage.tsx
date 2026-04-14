@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Mic, MicOff, AlertCircle, Save, RotateCcw, Volume2, 
-  VolumeX, ChevronRight, Brain, Clock, Target, Lightbulb, Play, Loader2
+  VolumeX, ChevronRight, Brain, Target, Lightbulb, Play, Loader2
 } from 'lucide-react';
 import { useInterview } from '../../../context/InterviewContext';
 import { useSpeechToText } from '../hooks/useSpeechToText';
@@ -12,12 +12,12 @@ import Timer from './Timer';
 const InterviewPage: React.FC = () => {
   const { 
     questions, currentQuestionIndex, submitAnswer, finishInterview, 
-    isLoading: isSubmitting, role, status, fullName 
+    isLoading: isSubmitting, role
   } = useInterview();
 
   const {
     transcript, startListening, stopListening, resetTranscript,
-    error: speechError, isSupported: isSpeechSupported, isListening
+    error: speechError
   } = useSpeechToText();
 
   const [step, setStep] = useState<'preview' | 'recording' | 'review'>('preview');

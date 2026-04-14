@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import {
     BookOpen, FileCode, TrendingUp, Trophy,
-    ArrowUpRight, ArrowDownRight, Activity,
+    ArrowUpRight, ArrowDownRight,
     Target, Flame, GraduationCap, Code2, Briefcase
 } from 'lucide-react';
 import {
